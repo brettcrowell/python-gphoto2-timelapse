@@ -3,5 +3,9 @@
     "name": "goldenDome",
     "bucket": "goldenDome0",
     "ts": 1234567890
+  }, {
+    "name": "goldenDome",
+    "bucket": "goldenDome0",
+    "ts": 987654321
   }
 ]
