@@ -31,7 +31,10 @@ class Sequence:
             if((next_image_ts + delay) < current_ts):
 
                 # skip any images that should have already been taken
-                print('skipping image {} ({}, {})'.format(next_image['name'], next_image_ts, datetime.fromtimestamp(next_image_ts).strftime('{:%Y-%m-%d %H:%M:%S}')))
+                print('skipping image {} ({}, {})'.format(next_image['name'],
+                                                          next_image_ts,
+                                                          datetime.fromtimestamp(next_image_ts).strftime(
+                                                              '{:%Y-%m-%d %H:%M:%S}')))
 
             else:
 
