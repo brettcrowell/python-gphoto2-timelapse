@@ -1,7 +1,6 @@
 import time
 import gphoto2 as gp
 import os
-import subprocess
 
 class Timelapse:
 
@@ -13,6 +12,8 @@ class Timelapse:
     def __init__(self, sequence, max_ms_between_images = 3600000, min_image_kb = 100000):
 
         self.sequence = sequence
+
+        # general preferences
         self.preferences['max_ms_between_images'] = max_ms_between_images
         self.preferences['min_image_kb'] = min_image_kb
         self.preferences['location'] = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -27,67 +28,59 @@ class Timelapse:
     def reset_usb(self, reason, callback):
         return None
 
-    def connect_to_camera(self, callback):
-        return None
-
     def take_picture(self, image):
 
-        if(False):
-            # if the camera isn't connected, go looking for it
-            print("no camera found")
-        else:
+        print("capturing image {} ({})".format(image['name'], image['ts']))
 
-            print("capturing image {} ({})".format(image['name'], image['ts']))
+        context = gp.gp_context_new()
+        camera = gp.check_result(gp.gp_camera_new())
 
-            context = gp.gp_context_new()
-            camera = gp.check_result(gp.gp_camera_new())
+        try:
 
-            try:
+            # initialize the camera
+            gp.check_result(gp.gp_camera_init(camera, context))
 
-                # initialize the camera
-                gp.check_result(gp.gp_camera_init(camera, context))
+            # save information about found camera
+            # print(gp.check_result(gp.gp_camera_get_summary(camera, context)))
 
-                # save information about found camera
-                # gp.check_result(gp.gp_camera_get_summary(camera, context))
+            # capture image, making note of the file path on memory card
+            file_path = gp.check_result(gp.gp_camera_capture(camera, gp.GP_CAPTURE_IMAGE, context))
 
-                # capture image, making note of the file path on memory card
-                file_path = gp.check_result(gp.gp_camera_capture(camera, gp.GP_CAPTURE_IMAGE, context))
+            print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
 
-                print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+            # get reference to image file on camera
+            camera_file = gp.check_result(
+                gp.gp_camera_file_get(camera, file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, context))
 
-                # get reference to image file on camera
-                camera_file = gp.check_result(
-                    gp.gp_camera_file_get(camera, file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, context))
+            # determine where to store this file locally
+            target = os.path.join(self.preferences['location'], "output", "{}{}.jpg".format(image['name'], image['ts']))
 
-                # determine where to store this file locally
-                target = os.path.join(self.preferences['location'], "output", "{}{}.jpg".format(image['name'], image['ts']))
+            print('Copying image to', target)
 
-                print('Copying image to', target)
+            # download image to directory determined above
+            gp.check_result(gp.gp_file_save(camera_file, target))
 
-                # download image to directory determined above
-                gp.check_result(gp.gp_file_save(camera_file, target))
+        except gp.GPhoto2Error as ex:
 
-            except gp.GPhoto2Error as ex:
+            if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
+                print("Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
 
-                if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
-                    print("Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
+            elif ex.code == gp.GP_ERROR_IO_USB_CLAIM:
+                print("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
 
-                elif ex.code == gp.GP_ERROR_IO_USB_CLAIM:
-                    print("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
+            else:
+                print("GPhoto2 Error: {}".format(ex.string))
 
-                else:
-                    print("GPhoto2 Error: {}".format(ex.string))
+        gp.check_result(gp.gp_camera_exit(camera, context))
 
-            gp.check_result(gp.gp_camera_exit(camera, context))
+        # continue with rest of program
 
-            # continue with rest of program
+        current_ts = image['ts']  # int(round(time.time() * 1000))
+        ms_image_delay = current_ts - image['ts']
 
-            current_ts = image['ts']  # int(round(time.time() * 1000))
-            ms_image_delay = current_ts - image['ts']
+        print("current image has processed {}s behind scheduled time".format(ms_image_delay / 1000))
 
-            print("current image has processed {}s behind scheduled time".format(ms_image_delay / 1000))
-
-            self.take_next_picture(ms_image_delay)
+        self.take_next_picture(ms_image_delay)
 
         # this function should have saved the captured image to disk.  return the path
         return target or None
