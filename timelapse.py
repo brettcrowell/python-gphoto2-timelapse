@@ -1,6 +1,7 @@
 import time
 import gphoto2 as gp
 import os
+import threading
 
 class Timelapse:
 
@@ -49,8 +50,11 @@ class Timelapse:
             print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
 
             # get reference to image file on camera
-            camera_file = gp.check_result(
-                gp.gp_camera_file_get(camera, file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL, context))
+            camera_file = gp.check_result(gp.gp_camera_file_get(camera,
+                                                                file_path.folder,
+                                                                file_path.name,
+                                                                gp.GP_FILE_TYPE_NORMAL,
+                                                                context))
 
             # determine where to store this file locally
             target = os.path.join(self.preferences['location'], "output", "{}{}.jpg".format(image['name'], image['ts']))
@@ -59,6 +63,8 @@ class Timelapse:
 
             # download image to directory determined above
             gp.check_result(gp.gp_file_save(camera_file, target))
+
+            # @todo need to check file size here
 
         except gp.GPhoto2Error as ex:
 
@@ -71,22 +77,20 @@ class Timelapse:
             else:
                 print("GPhoto2 Error: {}".format(ex.string))
 
-        gp.check_result(gp.gp_camera_exit(camera, context))
+        finally:
 
-        # continue with rest of program
+            # let go of the camera now
+            gp.check_result(gp.gp_camera_exit(camera, context))
 
         current_ts = image['ts']  # int(round(time.time() * 1000))
         ms_image_delay = current_ts - image['ts']
 
-        print("current image has processed {}s behind scheduled time".format(ms_image_delay / 1000))
+        print("Capture complete ({}s behind scheduled time)".format(ms_image_delay / 1000))
 
-        self.take_next_picture(ms_image_delay)
-
-        # this function should have saved the captured image to disk.  return the path
-        return target or None
+        return target, ms_image_delay
 
     def upload_to_s3(self, image_path, image):
-        print("Uploading {} to S3".format(image_path))
+        return None
 
     def take_next_picture(self, delay = 0):
 
@@ -123,11 +127,16 @@ class Timelapse:
             # and now, we wait (gotta love synchronous code)
             time.sleep(ms_until_next_image / 1000)
 
-            # after waking up
-            image_path = self.take_picture(next_image)
+            # at long last, the next_image's time has arrived.  capture!
+            image_meta_data = self.take_picture(next_image)
 
-            if next_image['bucket']:
-                self.upload_to_s3(image_path, next_image)
+            # asynchronously upload this image to s3 if there is a bucket specified
+            if (next_image['bucket']):
+                t = threading.Thread(target=self.upload_to_s3, args=(image_meta_data[0], next_image))
+                t.start()
+
+            # recurse
+            self.take_next_picture(image_meta_data[1])
 
         else:
             print("done")
