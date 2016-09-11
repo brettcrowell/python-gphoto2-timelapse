@@ -2,6 +2,7 @@ import time
 import gphoto2 as gp
 import os
 import threading
+import signal
 
 class Timelapse:
 
@@ -10,12 +11,13 @@ class Timelapse:
 
     deferredImage = None
 
-    def __init__(self, sequence, max_ms_between_images = 600000, min_image_kb = 100000):
+    def __init__(self, sequence, max_ms_between_images = 600000, max_ms_image_capture=60000, min_image_kb = 100000):
 
         self.sequence = sequence
 
         # general preferences
         self.preferences['max_ms_between_images'] = max_ms_between_images
+        self.preferences['max_ms_image_capture'] = max_ms_image_capture
         self.preferences['min_image_kb'] = min_image_kb
         self.preferences['location'] = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -77,6 +79,9 @@ class Timelapse:
             elif ex.code == gp.GP_ERROR_IO_USB_CLAIM:
                 print("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
 
+            elif ex.code == gp.GP_ERROR_IO:
+                print ("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
+
             else:
                 print("GPhoto2 Error: {}".format(ex.string))
 
@@ -104,10 +109,11 @@ class Timelapse:
             # images may be deferred if they would have caused the camera to idle for too long
             next_image = self.deferredImage or self.sequence.get_next_image(delay)
 
+            max_ms_between_images = self.preferences['max_ms_between_images']
             ms_until_next_image = next_image['ts'] - current_ts
             sec_until_next_image = ms_until_next_image / 1000
 
-            if(ms_until_next_image > self.preferences['max_ms_between_images']):
+            if(ms_until_next_image > max_ms_between_images):
 
                 # some cameras have been known to 'drop off' if they aren't accessed frequently enough.
                 # the following provision will take a throwaway image every (default 60 mins) to prevent that.
@@ -116,33 +122,70 @@ class Timelapse:
 
                 next_image = {
                     'name': 'keep-alive-signal',
-                    'ts': current_ts + self.preferences['max_ms_between_images'],
+                    'ts': current_ts + max_ms_between_images,
                     'discard': True
                 }
 
                 # re-calculate the timer variable, as the image has changed
-                ms_until_next_image = self.preferences['max_ms_between_images']
+                ms_until_next_image = max_ms_between_images
 
             else:
 
                 # back on track, so reset the cycle
                 self.deferredImage = None
 
-            print("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'], next_image['ts'], sec_until_next_image))
+            print("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'],
+                                                                            next_image['ts'],
+                                                                            sec_until_next_image))
 
             # and now, we wait (gotta love synchronous code)
             time.sleep(sec_until_next_image)
 
-            # at long last, the next_image's time has arrived.  capture!
-            image_meta_data = self.take_picture(next_image)
+            # in case something goes wrong
+            image_meta_data = None
 
-            # asynchronously upload this image to s3 if there is a bucket specified
-            if ('bucket' in next_image):
-                amazon_upload_thread = threading.Thread(target=self.upload_to_s3, args=(image_meta_data[0], next_image))
-                amazon_upload_thread.start()
+            try:
+
+                ms_capture_timeout = self.preferences['max_ms_image_capture']
+                sec_capture_timeout = int(ms_capture_timeout / 1000)
+
+                print(sec_capture_timeout)
+
+                # at long last, the next_image's time has arrived.  capture!
+                with timeout(seconds=sec_capture_timeout):
+                    image_meta_data = self.take_picture(next_image)
+
+                if ('bucket' in next_image):
+
+                    # asynchronously upload this image to s3 if there is a bucket specified
+                    amazon_upload_thread = threading.Thread(target=self.upload_to_s3, args=(image_meta_data[0], next_image))
+                    amazon_upload_thread.start()
+
+            except TimeoutError as ex:
+                print("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image['name'],
+                                                                                    next_image['ts'],
+                                                                                    sec_capture_timeout))
+
+            # account for delay if we are behind schedule
+            ms_delay = image_meta_data[1] if image_meta_data else 0
 
             # recurse
-            self.take_next_picture(image_meta_data[1])
+            self.take_next_picture(ms_delay)
 
         else:
             print("done")
+
+class TimeoutError(Exception):
+    pass
+
+class timeout:
+    def __init__(self, seconds=1, error_message='Timeout'):
+        self.seconds = seconds
+        self.error_message = error_message
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
