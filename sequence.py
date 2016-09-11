@@ -21,7 +21,7 @@ class Sequence:
         self.exposures.sort(key=self.by_ts, reverse=True)
 
         # get the current time, in milliseconds
-        current_ts = int(round(time.time() * 1000))
+        current_ts = 0#int(round(time.time() * 1000))
 
         while self.exposures:
 
