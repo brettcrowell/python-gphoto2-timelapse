@@ -21,7 +21,7 @@ class Sequence:
         self.exposures.sort(key=self.by_ts, reverse=True)
 
         # get the current time, in milliseconds
-        current_ts = 0#int(round(time.time() * 1000))
+        current_ts = int(round(time.time() * 1000)) # @todo testing: 0
 
         while self.exposures:
 
@@ -31,10 +31,10 @@ class Sequence:
             if((next_image_ts + delay) < current_ts):
 
                 # skip any images that should have already been taken
-                print('skipping image {} ({}, {})'.format(next_image['name'],
+                print('Skipping image `{}-{}`, ({})'.format(next_image['name'],
                                                           next_image_ts,
-                                                          datetime.fromtimestamp(next_image_ts).strftime(
-                                                              '{:%Y-%m-%d %H:%M:%S}')))
+                                                          datetime.fromtimestamp(next_image_ts / 1000).strftime(
+                                                              '%Y-%m-%d %H:%M:%S')))
 
             else:
 

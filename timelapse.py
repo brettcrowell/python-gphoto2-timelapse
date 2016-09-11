@@ -10,7 +10,7 @@ class Timelapse:
 
     deferredImage = None
 
-    def __init__(self, sequence, max_ms_between_images = 3600000, min_image_kb = 100000):
+    def __init__(self, sequence, max_ms_between_images = 600000, min_image_kb = 100000):
 
         self.sequence = sequence
 
@@ -31,10 +31,13 @@ class Timelapse:
 
     def take_picture(self, image):
 
-        print("capturing image {} ({})".format(image['name'], image['ts']))
+        image_filename = "{}-{}".format(image['name'], image['ts'])
+
+        print("Capturing image `{}`".format(image_filename))
 
         context = gp.gp_context_new()
         camera = gp.check_result(gp.gp_camera_new())
+        target = None
 
         try:
 
@@ -57,7 +60,7 @@ class Timelapse:
                                                                 context))
 
             # determine where to store this file locally
-            target = os.path.join(self.preferences['location'], "output", "{}{}.jpg".format(image['name'], image['ts']))
+            target = os.path.join(self.preferences['location'], "output", "{}.jpg".format(image_filename))
 
             print('Copying image to', target)
 
@@ -82,10 +85,10 @@ class Timelapse:
             # let go of the camera now
             gp.check_result(gp.gp_camera_exit(camera, context))
 
-        current_ts = image['ts']  # int(round(time.time() * 1000))
+        current_ts = int(round(time.time() * 1000)) # @todo testing: image['ts']
         ms_image_delay = current_ts - image['ts']
 
-        print("Capture complete ({}s behind scheduled time)".format(ms_image_delay / 1000))
+        print("Capture complete (main thread blocked for {}s)".format(ms_image_delay / 1000))
 
         return target, ms_image_delay
 
@@ -96,12 +99,13 @@ class Timelapse:
 
         if(self.sequence.has_more_images()):
 
-            current_ts = 0  # int(round(time.time() * 1000))
+            current_ts = int(round(time.time() * 1000)) # @todo testing: 0
 
             # images may be deferred if they would have caused the camera to idle for too long
             next_image = self.deferredImage or self.sequence.get_next_image(delay)
 
             ms_until_next_image = next_image['ts'] - current_ts
+            sec_until_next_image = ms_until_next_image / 1000
 
             if(ms_until_next_image > self.preferences['max_ms_between_images']):
 
@@ -116,7 +120,7 @@ class Timelapse:
                     'discard': True
                 }
 
-                # re-caclculate the timer variable, as the image has changed
+                # re-calculate the timer variable, as the image has changed
                 ms_until_next_image = self.preferences['max_ms_between_images']
 
             else:
@@ -124,16 +128,18 @@ class Timelapse:
                 # back on track, so reset the cycle
                 self.deferredImage = None
 
+            print("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'], next_image['ts'], sec_until_next_image))
+
             # and now, we wait (gotta love synchronous code)
-            time.sleep(ms_until_next_image / 1000)
+            time.sleep(sec_until_next_image)
 
             # at long last, the next_image's time has arrived.  capture!
             image_meta_data = self.take_picture(next_image)
 
             # asynchronously upload this image to s3 if there is a bucket specified
-            if (next_image['bucket']):
-                t = threading.Thread(target=self.upload_to_s3, args=(image_meta_data[0], next_image))
-                t.start()
+            if ('bucket' in next_image):
+                amazon_upload_thread = threading.Thread(target=self.upload_to_s3, args=(image_meta_data[0], next_image))
+                amazon_upload_thread.start()
 
             # recurse
             self.take_next_picture(image_meta_data[1])
