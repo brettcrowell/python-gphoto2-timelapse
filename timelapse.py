@@ -23,7 +23,24 @@ class Timelapse:
         return None
 
     def take_picture(self, image):
-        print(image)
+
+        if(False):
+            # if the camera isn't connected, go looking for it
+            print("no camera found")
+        else:
+
+            print("capturing image {} ({})".format(image['name'], image['ts']));
+
+            current_ts = image['ts']  # int(round(time.time() * 1000))
+            ms_image_delay = current_ts - image['ts']
+
+            print("current image has processed {}s behind scheduled time".format(ms_image_delay / 1000))
+
+            self.take_next_picture(ms_image_delay)
+
+        return None
+
+    def write_image_to_fs(self):
         return None
 
     def upload_to_s3(self, imagePath, bucket, key, recurse):
