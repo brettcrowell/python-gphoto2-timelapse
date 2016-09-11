@@ -90,12 +90,7 @@ class Timelapse:
             # let go of the camera now
             gp.check_result(gp.gp_camera_exit(camera, context))
 
-        current_ts = int(round(time.time() * 1000)) # @todo testing: image['ts']
-        ms_image_delay = current_ts - image['ts']
-
-        print("Capture complete (main thread blocked for {}s)".format(ms_image_delay / 1000))
-
-        return target, ms_image_delay
+        return target
 
     def upload_to_s3(self, image_path, image):
         return None
@@ -111,7 +106,6 @@ class Timelapse:
 
             max_ms_between_images = self.preferences['max_ms_between_images']
             ms_until_next_image = next_image['ts'] - current_ts
-            sec_until_next_image = ms_until_next_image / 1000
 
             if(ms_until_next_image > max_ms_between_images):
 
@@ -134,6 +128,9 @@ class Timelapse:
                 # back on track, so reset the cycle
                 self.deferredImage = None
 
+            # how many seconds until we shoot again?
+            sec_until_next_image = ms_until_next_image / 1000
+
             print("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'],
                                                                             next_image['ts'],
                                                                             sec_until_next_image))
@@ -141,15 +138,10 @@ class Timelapse:
             # and now, we wait (gotta love synchronous code)
             time.sleep(sec_until_next_image)
 
-            # in case something goes wrong
-            image_meta_data = None
-
             try:
 
                 ms_capture_timeout = self.preferences['max_ms_image_capture']
                 sec_capture_timeout = int(ms_capture_timeout / 1000)
-
-                print(sec_capture_timeout)
 
                 # at long last, the next_image's time has arrived.  capture!
                 with timeout(seconds=sec_capture_timeout):
@@ -166,11 +158,14 @@ class Timelapse:
                                                                                     next_image['ts'],
                                                                                     sec_capture_timeout))
 
-            # account for delay if we are behind schedule
-            ms_delay = image_meta_data[1] if image_meta_data else 0
+            # calculate how far behind schedule we are
+            current_ts = int(round(time.time() * 1000))
+            ms_image_delay = current_ts - next_image['ts']
+
+            print("Capture complete (main thread blocked for {}s)".format(ms_image_delay / 1000))
 
             # recurse
-            self.take_next_picture(ms_delay)
+            self.take_next_picture(ms_image_delay)
 
         else:
             print("done")
