@@ -51,12 +51,15 @@ class GPhoto2Timelapse(Timelapse):
 
             elif ex.code == gp.GP_ERROR_IO_USB_CLAIM:
                 print("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
+                self.killall_ptp(image)
 
             elif ex.code == gp.GP_ERROR_IO:
                 print ("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
+                self.reset_usb(image)
 
             else:
                 print("GPhoto2 Error: {}".format(ex.string))
+                self.reboot_machine(image)
 
         finally:
 
