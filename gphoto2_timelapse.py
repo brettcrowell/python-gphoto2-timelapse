@@ -1,5 +1,6 @@
 from timelapse import Timelapse
 import gphoto2 as gp
+import os
 
 class GPhoto2Timelapse(Timelapse):
 

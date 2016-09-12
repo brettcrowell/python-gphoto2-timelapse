@@ -70,7 +70,7 @@ class Timelapse:
                 self.deferredImage = None
 
             # how many seconds until we shoot again?
-            sec_until_next_image = ms_until_next_image / 1000
+            sec_until_next_image = max(ms_until_next_image / 1000, 0)
 
             print("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'],
                                                                             next_image['ts'],
