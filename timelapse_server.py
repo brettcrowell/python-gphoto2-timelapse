@@ -1,6 +1,5 @@
 import json
-from gphoto2_timelapse import GPhoto2Timelapse
-from webcam_timelapse import WebcamTimelapse
+from timelapse import GPhoto2Timelapse
 from sequence import Sequence
 
 with open("data.json") as data_file:
