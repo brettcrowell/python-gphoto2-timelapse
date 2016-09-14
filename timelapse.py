@@ -5,30 +5,32 @@ import signal
 from subprocess import call
 
 class Timelapse:
-
-    sequence = None
-    preferences = {}
-
-    # if an image fails to capture, it should be re-introduced after any reboot/etc.
-    failed_image = None
-
-    # if the next image is to be taken too far in the future (> max_ms_between_images), it needs to
-    # be deferred so we can insert a keep-alive-signal image
-    deferred_image = None
+    
+    state = {
+        "sequence": None,
+        "preferences": {
+            "max_ms_between_images": 600000,
+            "max_ms_image_capture": 60000,
+            "min_image_kb": 100000,
+            "location": None
+        },
+        "failed_image": None,
+        "deferred_image": None
+    }
 
     def __init__(self, sequence, max_ms_between_images = 600000, max_ms_image_capture=60000, min_image_kb = 100000):
 
-        self.sequence = sequence
+        self.state['sequence'] = sequence
 
         # general preferences
-        self.preferences['max_ms_between_images'] = max_ms_between_images
-        self.preferences['max_ms_image_capture'] = max_ms_image_capture
-        self.preferences['min_image_kb'] = min_image_kb
-        self.preferences['location'] = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        self.state['preferences']['max_ms_between_images'] = max_ms_between_images
+        self.state['preferences']['max_ms_image_capture'] = max_ms_image_capture
+        self.state['preferences']['min_image_kb'] = min_image_kb
+        self.state['preferences']['location'] = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
         # make sure the output and log directories exist @todo log directory
-        if not os.path.exists(os.path.join(self.preferences['location'], 'output')):
-            os.makedirs(os.path.join(self.preferences['location'], 'output'))
+        if not os.path.exists(os.path.join(self.state['preferences']['location'], 'output')):
+            os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
 
         # and we're off!
         self.take_next_picture()
@@ -38,17 +40,17 @@ class Timelapse:
 
     def reboot_machine(self, image):
         print("-- Rebooting Machine")
-        self.failed_image = image
+        self.state['failed_image'] = image
         return None
 
     def reset_usb(self, image):
         print("-- Resetting USB")
-        self.failed_image = image
+        self.state['failed_image'] = image
         return None
 
     def killall_ptp(self, image):
         print("-- Killing PTPCamera")
-        self.failed_image = image
+        self.state['failed_image'] = image
         call(["killall", "PTPCamera"])
 
     def take_picture(self, image):
@@ -61,29 +63,29 @@ class Timelapse:
 
         next_image = None
 
-        if self.failed_image:
+        if self.state['failed_image']:
 
             # if an image failed to capture, try it again
-            next_image = self.failed_image
-            self.failed_image = None
+            next_image = self.state['failed_image']
+            self.state['failed_image'] = None
 
-        elif self.deferred_image:
+        elif self.state['deferred_image']:
 
             # images may be deferred if they would have caused the camera to idle for too long
-            next_image = self.deferred_image
-            self.deferred_image = None
+            next_image = self.state['deferred_image']
+            self.state['deferred_image'] = None
 
         else:
 
             # standard lookup for next image
-            if (self.sequence.has_more_images()):
-                next_image = self.sequence.get_next_image(delay)
+            if (self.state['sequence'].has_more_images()):
+                next_image = self.state['sequence'].get_next_image(delay)
 
         if next_image:
 
             # determine how long we need to wait
             current_ts = int(round(time.time() * 1000))
-            max_ms_between_images = self.preferences['max_ms_between_images']
+            max_ms_between_images = self.state['preferences']['max_ms_between_images']
             ms_until_next_image = next_image['ts'] - current_ts
 
             if(ms_until_next_image > max_ms_between_images):
@@ -91,7 +93,7 @@ class Timelapse:
                 # some cameras have been known to 'drop off' if they aren't accessed frequently enough.
                 # the following provision will take a throwaway image every (default 60 mins) to prevent that.
 
-                self.deferred_image = next_image
+                self.state['deferred_image'] = next_image
 
                 next_image = {
                     'name': 'keep-alive-signal',
@@ -115,7 +117,7 @@ class Timelapse:
             try:
 
                 # don't let the capture function die on us
-                ms_capture_timeout = self.preferences['max_ms_image_capture']
+                ms_capture_timeout = self.state['preferences']['max_ms_image_capture']
                 sec_capture_timeout = int(ms_capture_timeout / 1000)
 
                 # at long last, the next_image's time has arrived.  capture!
