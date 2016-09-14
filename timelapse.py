@@ -1,13 +1,15 @@
 import time
 import os
+import json
 import threading
 import signal
 from subprocess import call
 
 class Timelapse:
     
+    sequence = None
+    
     state = {
-        "sequence": None,
         "preferences": {
             "max_ms_between_images": 600000,
             "max_ms_image_capture": 60000,
@@ -20,25 +22,36 @@ class Timelapse:
 
     def __init__(self, sequence, max_ms_between_images = 600000, max_ms_image_capture=60000, min_image_kb = 100000):
 
-        self.state['sequence'] = sequence
+        try:
 
-        # general preferences
-        self.state['preferences']['max_ms_between_images'] = max_ms_between_images
-        self.state['preferences']['max_ms_image_capture'] = max_ms_image_capture
-        self.state['preferences']['min_image_kb'] = min_image_kb
-        self.state['preferences']['location'] = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+            # if saved_state exists, use it to resume a previous lapse
+            with open("saved_state.json") as saved_state:
+                self.state = json.load(saved_state)
+                os.remove(saved_state)
 
-        # make sure the output and log directories exist @todo log directory
-        if not os.path.exists(os.path.join(self.state['preferences']['location'], 'output')):
-            os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
+        except FileNotFoundError:
+
+            self.sequence = sequence
+
+            # general preferences
+            self.state['preferences']['max_ms_between_images'] = max_ms_between_images
+            self.state['preferences']['max_ms_image_capture'] = max_ms_image_capture
+            self.state['preferences']['min_image_kb'] = min_image_kb
+            self.state['preferences']['location'] = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+            # make sure the output and log directories exist @todo log directory
+            if not os.path.exists(os.path.join(self.state['preferences']['location'], 'output')):
+                os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
 
         # and we're off!
         self.take_next_picture()
 
-    def write_timelapse_meta_to_disk(self):
-        return None
+    def write_state_to_disk(self):
+        with open('saved_state.json', 'w') as outfile:
+            json.dump(self.state, outfile)
 
     def reboot_machine(self, image):
+        self.write_state_to_disk()
         print("-- Rebooting Machine")
         self.state['failed_image'] = image
         return None
@@ -78,8 +91,8 @@ class Timelapse:
         else:
 
             # standard lookup for next image
-            if (self.state['sequence'].has_more_images()):
-                next_image = self.state['sequence'].get_next_image(delay)
+            if (self.sequence.has_more_images()):
+                next_image = self.sequence.get_next_image(delay)
 
         if next_image:
 
