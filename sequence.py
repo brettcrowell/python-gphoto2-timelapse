@@ -12,6 +12,9 @@ class Sequence:
         except KeyError:
             return 0
 
+    def get_exposures(self):
+        return self.exposures
+
     def add_image(self, image):
         self.exposures.push(image)
 
