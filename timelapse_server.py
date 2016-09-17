@@ -47,7 +47,7 @@ except JSONDecodeError:
 
 except TimelapseError as e:
 
-    logs.log("Timelapse error occured.  Rebooting")
+    logs.log("> Timelapse aborted, rebooting system.")
 
     outgoing_state = {
         "lapse": lapse.get_state(),

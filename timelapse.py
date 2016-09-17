@@ -36,21 +36,11 @@ class Timelapse:
             os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
 
     def get_state(self):
+        self.logger.log("> Unable to recover from timelapse error.  Exiting application.")
         return self.state
 
-    def destruct(self, image):
-        self.state['failed_image'] = image
+    def destruct(self):
         raise TimelapseError
-
-    def reset_usb(self, image):
-        self.logger.log("-- Resetting USB")
-        self.state['failed_image'] = image
-        return None
-
-    def killall_ptp(self, image):
-        self.logger.log("-- Killing PTPCamera")
-        self.state['failed_image'] = image
-        call(["killall", "PTPCamera"])
 
     def take_picture(self, image):
         raise NotImplementedError
@@ -133,7 +123,8 @@ class Timelapse:
                 self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image['name'],
                                                                                     next_image['ts'],
                                                                                     sec_capture_timeout))
-                self.destruct(next_image)
+                self.state["failed_image"] = next_image
+                self.destruct()
 
             # calculate how far behind schedule we are
             current_ts = int(round(time.time() * 1000))
@@ -148,6 +139,32 @@ class Timelapse:
             self.logger.log("done")
 
 class GPhoto2Timelapse(Timelapse):
+
+    attempted_reset_usb = False
+    attempted_power_cycle_camera = False
+
+    def reset_usb(self):
+        self.logger.log("> Resetting USB")
+        self.attempted_reset_usb = True
+
+    def power_cycle_camera(self):
+        self.logger.log("> Cutting power to camera")
+        time.sleep(5)
+        self.logger.log("> Restoring power to camera")
+        time.sleep(5)
+        self.attempted_power_cycle_camera = True
+
+    def killall_ptp(self):
+        self.logger.log("> Killing PTPCamera")
+        call(["killall", "PTPCamera"])
+
+    def medicate(self):
+        if not self.attempted_reset_usb:
+            self.reset_usb()
+        elif not self.attempted_power_cycle_camera:
+            self.power_cycle_camera()
+        else:
+            self.destruct()
 
     def take_picture(self, image):
 
@@ -180,32 +197,38 @@ class GPhoto2Timelapse(Timelapse):
                                                                 context))
 
             # determine where to store this file locally
-            target = os.path.join(self.preferences['location'], "output", "{}.jpg".format(image_filename))
+            target = os.path.join(self.state["preferences"]['location'], "output", "{}.jpg".format(image_filename))
 
             self.logger.log('Copying image to {}'.format(target))
 
             # download image to directory determined above
             gp.check_result(gp.gp_file_save(camera_file, target))
 
+            # if we made it here, the camera must be working
+            self.attempted_reset_usb = False
+            self.attempted_power_cycle_camera = False
+
             # @todo need to check file size here
 
         except gp.GPhoto2Error as ex:
 
-            if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
-                self.logger.log("Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
-                self.destruct(image)
+            self.state["failed_image"] = image
 
-            elif ex.code == gp.GP_ERROR_IO_USB_CLAIM:
+            if ex.code == gp.GP_ERROR_IO_USB_CLAIM:
                 self.logger.log("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
-                self.killall_ptp(image)
-
-            elif ex.code == gp.GP_ERROR_IO:
-                self.logger.log("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
-                self.reset_usb(image)
+                self.killall_ptp()
 
             else:
-                self.logger.log("GPhoto2 Error: {}".format(ex.string))
-                self.destruct(image)
+
+                if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
+                    self.logger.log(
+                        "Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
+                elif ex.code == gp.GP_ERROR_IO:
+                    self.logger.log("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
+                else:
+                    self.logger.log("GPhoto2 Error: {}".format(ex.string))
+
+                self.medicate()
 
         finally:
 
