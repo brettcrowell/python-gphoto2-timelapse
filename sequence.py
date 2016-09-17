@@ -1,10 +1,15 @@
 import time
+from logger import Logger
 from datetime import datetime
 
 class Sequence:
 
-    def __init__(self, exposures):
+    exposures = []
+    logger = None
+
+    def __init__(self, exposures, logger = Logger()):
         self.exposures = exposures
+        self.logger = logger
 
     def by_ts(self, json):
         try:
@@ -16,7 +21,7 @@ class Sequence:
         return self.exposures
 
     def add_image(self, image):
-        self.exposures.push(image)
+        self.exposures.append(image)
 
     def get_next_image(self, delay = 0):
 
@@ -34,10 +39,11 @@ class Sequence:
             if((next_image_ts + delay) < current_ts):
 
                 # skip any images that should have already been taken
-                print('Skipping image `{}-{}`, ({})'.format(next_image['name'],
-                                                          next_image_ts,
-                                                          datetime.fromtimestamp(next_image_ts / 1000).strftime(
-                                                              '%Y-%m-%d %H:%M:%S')))
+                self.logger.log('Skipping image `{}-{}`, ({})'.format(next_image['name'],
+                                                                      next_image_ts,
+                                                                      datetime.fromtimestamp(
+                                                                          next_image_ts / 1000).strftime(
+                                                                          '%Y-%m-%d %H:%M:%S')))
 
             else:
 

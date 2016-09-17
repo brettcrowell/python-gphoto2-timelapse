@@ -5,10 +5,12 @@ import threading
 import signal
 import gphoto2 as gp
 from subprocess import call
+from logger import Logger
 
 class Timelapse:
     
     sequence = None
+    logger = None
     
     state = {
         "preferences": {
@@ -18,11 +20,10 @@ class Timelapse:
             "location": None
         },
         "failed_image": None,
-        "deferred_image": None,
-        "log": []
+        "deferred_image": None
     }
 
-    def __init__(self, sequence, max_ms_between_images = 600000, max_ms_image_capture=60000, min_image_kb = 100000):
+    def __init__(self, sequence, logger = Logger(), max_ms_between_images = 600000, max_ms_image_capture=60000, min_image_kb = 100000):
 
         try:
 
@@ -34,6 +35,7 @@ class Timelapse:
         except FileNotFoundError:
 
             self.sequence = sequence
+            self.logger = logger
 
             # general preferences
             self.state['preferences']['max_ms_between_images'] = max_ms_between_images
@@ -47,31 +49,28 @@ class Timelapse:
 
         # and we're off!
         self.take_next_picture()
-        
-    def log(self, message):
-        self.state["log"].append(message)
-        print(message)
 
     def write_state_to_disk(self):
         with open('saved_state.json', 'w') as outfile:
             json.dump({
                 "timelapse_state": self.state,
-                "exposures": self.sequence.get_exposures()
+                "exposures": self.sequence.get_exposures(),
+                "log": self.logger.get_log()
             }, outfile)
 
     def reboot_machine(self, image):
         self.write_state_to_disk()
-        self.log("-- Rebooting Machine")
+        self.logger.log("-- Rebooting Machine")
         self.state['failed_image'] = image
         return None
 
     def reset_usb(self, image):
-        self.log("-- Resetting USB")
+        self.logger.log("-- Resetting USB")
         self.state['failed_image'] = image
         return None
 
     def killall_ptp(self, image):
-        self.log("-- Killing PTPCamera")
+        self.logger.log("-- Killing PTPCamera")
         self.state['failed_image'] = image
         call(["killall", "PTPCamera"])
 
@@ -129,7 +128,7 @@ class Timelapse:
             # how many seconds until we shoot again?  min should be 0s
             sec_until_next_image = max(ms_until_next_image / 1000, 0)
 
-            self.log("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'],
+            self.logger.log("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'],
                                                                             next_image['ts'],
                                                                             sec_until_next_image))
 
@@ -153,7 +152,7 @@ class Timelapse:
                     amazon_upload_thread.start()
 
             except TimeoutError as ex:
-                self.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image['name'],
+                self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image['name'],
                                                                                     next_image['ts'],
                                                                                     sec_capture_timeout))
                 self.reboot_machine(next_image)
@@ -162,13 +161,13 @@ class Timelapse:
             current_ts = int(round(time.time() * 1000))
             ms_image_delay = current_ts - next_image['ts']
 
-            self.log("Capture complete (main thread blocked for {}s)".format(ms_image_delay / 1000))
+            self.logger.log("Capture complete (main thread blocked for {}s)".format(ms_image_delay / 1000))
 
             # recurse
             self.take_next_picture(ms_image_delay)
 
         else:
-            self.log("done")
+            self.logger.log("done")
 
 class GPhoto2Timelapse(Timelapse):
 
@@ -178,7 +177,7 @@ class GPhoto2Timelapse(Timelapse):
 
         image_filename = "{}-{}".format(image['name'], image['ts'])
 
-        self.log("Capturing image `{}`".format(image_filename))
+        self.logger.log("Capturing image `{}`".format(image_filename))
 
         context = gp.gp_context_new()
         camera = gp.check_result(gp.gp_camera_new())
@@ -195,7 +194,7 @@ class GPhoto2Timelapse(Timelapse):
             # capture image, making note of the file path on memory card
             file_path = gp.check_result(gp.gp_camera_capture(camera, gp.GP_CAPTURE_IMAGE, context))
 
-            self.log('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+            self.logger.log('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
 
             # get reference to image file on camera
             camera_file = gp.check_result(gp.gp_camera_file_get(camera,
@@ -207,7 +206,7 @@ class GPhoto2Timelapse(Timelapse):
             # determine where to store this file locally
             target = os.path.join(self.preferences['location'], "output", "{}.jpg".format(image_filename))
 
-            self.log('Copying image to {}'.format(target))
+            self.logger.log('Copying image to {}'.format(target))
 
             # download image to directory determined above
             gp.check_result(gp.gp_file_save(camera_file, target))
@@ -217,18 +216,18 @@ class GPhoto2Timelapse(Timelapse):
         except gp.GPhoto2Error as ex:
 
             if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
-                self.log("Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
+                self.logger.log("Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
 
             elif ex.code == gp.GP_ERROR_IO_USB_CLAIM:
-                self.log("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
+                self.logger.log("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
                 self.killall_ptp(image)
 
             elif ex.code == gp.GP_ERROR_IO:
-                self.log("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
+                self.logger.log("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
                 self.reset_usb(image)
 
             else:
-                self.log("GPhoto2 Error: {}".format(ex.string))
+                self.logger.log("GPhoto2 Error: {}".format(ex.string))
                 self.reboot_machine(image)
 
         finally:
