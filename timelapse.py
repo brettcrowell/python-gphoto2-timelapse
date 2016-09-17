@@ -1,11 +1,11 @@
 import time
 import os
-import json
 import threading
 import signal
 import gphoto2 as gp
 from subprocess import call
 from logger import Logger
+from timelapse_errors import TimeoutError, TimelapseError
 
 class Timelapse:
     
@@ -17,52 +17,30 @@ class Timelapse:
             "max_ms_between_images": 600000,
             "max_ms_image_capture": 60000,
             "min_image_kb": 100000,
-            "location": None
+            "location": os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
         },
         "failed_image": None,
         "deferred_image": None
     }
 
-    def __init__(self, sequence, logger = Logger(), max_ms_between_images = 600000, max_ms_image_capture=60000, min_image_kb = 100000):
+    def __init__(self, sequence, logger = Logger(), initial_state = None):
 
-        try:
+        self.sequence = sequence
+        self.logger = logger
 
-            # if saved_state exists, use it to resume a previous lapse
-            with open("saved_state.json") as saved_state:
-                self.state = json.load(saved_state)
-                os.remove("saved_state.json")
+        if(initial_state):
+            self.state = initial_state
 
-        except FileNotFoundError:
+        # make sure the output and log directories exist @todo log directory
+        if not os.path.exists(os.path.join(self.state['preferences']['location'], 'output')):
+            os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
 
-            self.sequence = sequence
-            self.logger = logger
+    def get_state(self):
+        return self.state
 
-            # general preferences
-            self.state['preferences']['max_ms_between_images'] = max_ms_between_images
-            self.state['preferences']['max_ms_image_capture'] = max_ms_image_capture
-            self.state['preferences']['min_image_kb'] = min_image_kb
-            self.state['preferences']['location'] = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-
-            # make sure the output and log directories exist @todo log directory
-            if not os.path.exists(os.path.join(self.state['preferences']['location'], 'output')):
-                os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
-
-        # and we're off!
-        self.take_next_picture()
-
-    def write_state_to_disk(self):
-        with open('saved_state.json', 'w') as outfile:
-            json.dump({
-                "timelapse_state": self.state,
-                "exposures": self.sequence.get_exposures(),
-                "log": self.logger.get_log()
-            }, outfile)
-
-    def reboot_machine(self, image):
-        self.write_state_to_disk()
-        self.logger.log("-- Rebooting Machine")
+    def destruct(self, image):
         self.state['failed_image'] = image
-        return None
+        raise TimelapseError
 
     def reset_usb(self, image):
         self.logger.log("-- Resetting USB")
@@ -155,7 +133,7 @@ class Timelapse:
                 self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image['name'],
                                                                                     next_image['ts'],
                                                                                     sec_capture_timeout))
-                self.reboot_machine(next_image)
+                self.destruct(next_image)
 
             # calculate how far behind schedule we are
             current_ts = int(round(time.time() * 1000))
@@ -172,8 +150,6 @@ class Timelapse:
 class GPhoto2Timelapse(Timelapse):
 
     def take_picture(self, image):
-
-        self.write_state_to_disk()
 
         image_filename = "{}-{}".format(image['name'], image['ts'])
 
@@ -217,6 +193,7 @@ class GPhoto2Timelapse(Timelapse):
 
             if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
                 self.logger.log("Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
+                self.destruct(image)
 
             elif ex.code == gp.GP_ERROR_IO_USB_CLAIM:
                 self.logger.log("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
@@ -228,7 +205,7 @@ class GPhoto2Timelapse(Timelapse):
 
             else:
                 self.logger.log("GPhoto2 Error: {}".format(ex.string))
-                self.reboot_machine(image)
+                self.destruct(image)
 
         finally:
 
@@ -241,9 +218,6 @@ class WebcamTimelapse(Timelapse):
 
     def take_picture(self, image):
         return None
-
-class TimeoutError(Exception):
-    pass
 
 class timeout:
     def __init__(self, seconds=1, error_message='Timeout'):
