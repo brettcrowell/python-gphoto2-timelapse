@@ -149,6 +149,11 @@ class GPhoto2Timelapse(Timelapse):
     attempted_reset_usb = False
     attempted_power_cycle_camera = False
 
+    def reset_medication_attempts(self):
+        self.attempted_killall_ptp = False
+        self.attempted_reset_usb = False
+        self.attempted_power_cycle_camera = False
+
     def reset_usb(self):
 
         self.logger.log("> Resetting USB")
@@ -248,8 +253,7 @@ class GPhoto2Timelapse(Timelapse):
             gp.check_result(gp.gp_file_save(camera_file, target))
 
             # if we made it here, the camera must be working
-            self.attempted_reset_usb = False
-            self.attempted_power_cycle_camera = False
+            self.reset_medication_attempts()
 
             # @todo need to check file size here
 
