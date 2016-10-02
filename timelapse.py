@@ -146,6 +146,7 @@ class GPhoto2Timelapse(Timelapse):
     camera_port_info_path = None
 
     # diagnostic variables
+    attempted_killall_ptp = False
     attempted_reset_usb = False
     attempted_power_cycle_camera = False
 
@@ -189,9 +190,12 @@ class GPhoto2Timelapse(Timelapse):
     def killall_ptp(self):
         self.logger.log("> Killing PTPCamera")
         call(["killall", "PTPCamera"])
+        self.attempted_killall_ptp = True
 
     def medicate(self):
-        if not self.attempted_reset_usb:
+        if not self.attempted_killall_ptp:
+            self.killall_ptp()
+        elif not self.attempted_reset_usb:
             self.reset_usb()
         elif not self.attempted_power_cycle_camera:
             self.power_cycle_camera()
@@ -254,20 +258,17 @@ class GPhoto2Timelapse(Timelapse):
             self.state["failed_image"] = image
 
             if ex.code == gp.GP_ERROR_IO_USB_CLAIM:
-                self.logger.log("Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
-                self.killall_ptp()
-
+                self.logger.log(
+                    "Camera is already in use.  If on Mac, try running `sudo killall PTPCamera` ({})".format(ex.string))
+            elif ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
+                self.logger.log(
+                    "Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
+            elif ex.code == gp.GP_ERROR_IO:
+                self.logger.log("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
             else:
+                self.logger.log("GPhoto2 Error: {}".format(ex.string))
 
-                if ex.code == gp.GP_ERROR_MODEL_NOT_FOUND:
-                    self.logger.log(
-                        "Unable to find usable camera.  Is it connected, alive, and awake? ({})".format(ex.string))
-                elif ex.code == gp.GP_ERROR_IO:
-                    self.logger.log("I/O issue with camera, USB connection needs to be reset ({})".format(ex.string))
-                else:
-                    self.logger.log("GPhoto2 Error: {}".format(ex.string))
-
-                self.medicate()
+            self.medicate()
 
         finally:
 
