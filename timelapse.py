@@ -172,6 +172,9 @@ class GPhoto2Timelapse(Timelapse):
                 ioctl(fd, USBDEVFS_RESET, 0)
                 fd.close()
 
+            except OSError as e:
+                self.logger.log("unable to virtually re-seat camera, is usb plugged in? (error: {})".format(e))
+
             except FileNotFoundError as e:
 
                 # if we get here, we probably aren't on a linux machine.  no bother, just move on.
