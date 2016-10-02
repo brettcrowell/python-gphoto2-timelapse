@@ -170,6 +170,8 @@ class GPhoto2Timelapse(Timelapse):
 
                 filename = "/dev/bus/usb/{}/{}".format(camera_usb_bus_num, camera_usb_device_num)
 
+                self.logger.log("re-seating device at {}".format(filename))
+
                 # define USBDEVFS_RESET as _IO('U', 20)
                 USBDEVFS_RESET = ord('U') << (4 * 2) | 20
 
