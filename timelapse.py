@@ -222,8 +222,6 @@ class GPhoto2Timelapse(Timelapse):
             camera_port_info = gp.check_result(gp.gp_camera_get_port_info(camera))
             self.camera_port_info_path = gp.check_result(gp.gp_port_info_get_path(camera_port_info))
 
-            self.reset_usb()
-
             # save information about found camera
             # print(gp.check_result(gp.gp_camera_get_summary(camera, context)))
 
