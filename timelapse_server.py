@@ -5,6 +5,18 @@ from logger import Logger
 from timelapse_errors import TimelapseError
 import os
 
+def save_state_to_disk(filename):
+
+    outgoing_state = {
+        "lapse": lapse.get_state(),
+        "exposures": seq.get_exposures(),
+        "logs": logr.get_log()
+    }
+
+    # write state to disk
+    with open(filename, 'w') as outfile:
+        json.dump(outgoing_state, outfile)
+
 try:
     try:
 
@@ -38,6 +50,8 @@ try:
     # and we're off!
     lapse.take_next_picture()
 
+    save_state_to_disk('results.json')
+
 except FileNotFoundError as e:
     logr.log("no data.json file found in root directory (error: {})".format(e))
 
@@ -45,15 +59,5 @@ except ValueError:
     logr.log("malformed json found in root directory.  please ensure minimal format of [{ \"name\": \"\", \"ts\": 1474075839955 }")
 
 except TimelapseError as e:
-
     logr.log("> Timelapse aborted, rebooting system.")
-
-    outgoing_state = {
-        "lapse": lapse.get_state(),
-        "exposures": seq.get_exposures(),
-        "logs": logr.get_log()
-    }
-
-    # write state to disk
-    with open('saved_state.json', 'w') as outfile:
-        json.dump(outgoing_state, outfile)
+    save_state_to_disk('saved_state.json')

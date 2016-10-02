@@ -38,7 +38,6 @@ class Timelapse:
             os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
 
     def get_state(self):
-        self.logger.log("> Unable to recover from timelapse error.  Exiting application.")
         return self.state
 
     def destruct(self):
