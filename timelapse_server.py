@@ -3,7 +3,6 @@ from timelapse import GPhoto2Timelapse
 from sequence import Sequence
 from logger import Logger
 from timelapse_errors import TimelapseError
-from json.decoder import JSONDecodeError
 import os
 
 try:
@@ -22,7 +21,7 @@ try:
 
             logr.log("State restored from disk.  Here we go again!")
 
-    except (FileNotFoundError, JSONDecodeError):
+    except (FileNotFoundError, ValueError):
 
         with open("data.json") as data_file:
 
@@ -42,7 +41,7 @@ try:
 except FileNotFoundError as e:
     logr.log("no data.json file found in root directory (error: {})".format(e))
 
-except JSONDecodeError:
+except ValueError:
     logr.log("malformed json found in root directory.  please ensure minimal format of [{ \"name\": \"\", \"ts\": 1474075839955 }")
 
 except TimelapseError as e:
