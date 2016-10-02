@@ -8,6 +8,7 @@ from subprocess import call
 from logger import Logger
 from timelapse_errors import TimeoutError, TimelapseError
 from fcntl import ioctl
+import logging
 
 class Timelapse:
     
@@ -211,6 +212,31 @@ class GPhoto2Timelapse(Timelapse):
         else:
             self.destruct()
 
+    ## gphoto2 sample functions
+
+    def list_files(self, camera, context, path='/'):
+        result = []
+        # get files
+        for name, value in gp.check_result(
+                gp.gp_camera_folder_list_files(camera, path, context)):
+            result.append(os.path.join(path, name))
+        # read folders
+        folders = []
+        for name, value in gp.check_result(
+                gp.gp_camera_folder_list_folders(camera, path, context)):
+            folders.append(name)
+        # recurse over subfolders
+        for name in folders:
+            result.extend(self.list_files(camera, context, os.path.join(path, name)))
+        return result
+
+    def delete_file(self, camera, context, path):
+        self.logger.log("deleting file {}".format(path))
+        folder, name = os.path.split(path)
+        gp.check_result(gp.gp_camera_file_delete(camera, folder, name, context))
+
+    ## overrides
+
     def take_picture(self, image):
 
         image_filename = "{}-{}".format(image['name'], image['ts'])
@@ -253,6 +279,11 @@ class GPhoto2Timelapse(Timelapse):
 
             # download image to directory determined above
             gp.check_result(gp.gp_file_save(camera_file, target))
+
+            # delete all photos stored on the camera
+            gp.error_severity[gp.GP_ERROR] = logging.WARNING
+            for image in self.list_files(camera, context):
+                self.delete_file(camera, context, image)
 
             # if we made it here, the camera must be working
             self.reset_medication_attempts()
