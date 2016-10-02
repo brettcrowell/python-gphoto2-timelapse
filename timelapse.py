@@ -1,11 +1,13 @@
 import time
 import os
+import re
 import threading
 import signal
 import gphoto2 as gp
 from subprocess import call
 from logger import Logger
 from timelapse_errors import TimeoutError, TimelapseError
+from fcntl import ioctl
 
 class Timelapse:
     
@@ -140,11 +142,41 @@ class Timelapse:
 
 class GPhoto2Timelapse(Timelapse):
 
+    # runtime vars
+    camera_port_info_path = None
+
+    # diagnostic variables
     attempted_reset_usb = False
     attempted_power_cycle_camera = False
 
     def reset_usb(self):
+
         self.logger.log("> Resetting USB")
+
+        if self.camera_port_info_path:
+
+            try:
+
+                camera_port_info_regexp = re.compile('usb:([0-9]+),([0-9]+)')
+                camera_port_info_regexp_groups = camera_port_info_regexp.match(self.camera_port_info_path).groups()
+
+                camera_usb_bus_num = camera_port_info_regexp_groups[0]
+                camera_usb_device_num = camera_port_info_regexp_groups[1]
+
+                filename = "/dev/bus/usb/{}/{}".format(camera_usb_bus_num, camera_usb_device_num)
+
+                # define USBDEVFS_RESET as _IO('U', 20)
+                USBDEVFS_RESET = ord('U') << (4 * 2) | 20
+
+                fd = open(filename, "wb")
+                ioctl(fd, USBDEVFS_RESET, 0)
+                fd.close()
+
+            except FileNotFoundError as e:
+
+                # if we get here, we probably aren't on a linux machine.  no bother, just move on.
+                self.logger.log("unable to virtually re-seat camera's usb port (error: {})".format(e))
+
         self.attempted_reset_usb = True
 
     def power_cycle_camera(self):
@@ -174,12 +206,19 @@ class GPhoto2Timelapse(Timelapse):
 
         context = gp.gp_context_new()
         camera = gp.check_result(gp.gp_camera_new())
+
         target = None
 
         try:
 
             # initialize the camera
             gp.check_result(gp.gp_camera_init(camera, context))
+
+            # save the camera port info, so we can virtually re-set the port by path
+            camera_port_info = gp.check_result(gp.gp_camera_get_port_info(camera))
+            self.camera_port_info_path = gp.check_result(gp.gp_port_info_get_path(camera_port_info))
+
+            self.reset_usb()
 
             # save information about found camera
             # print(gp.check_result(gp.gp_camera_get_summary(camera, context)))
