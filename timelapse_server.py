@@ -16,11 +16,11 @@ try:
             os.remove("saved_state.json")
 
             # make sure these are globals
-            logs = Logger(restored_state["logs"])
-            seq = Sequence(restored_state["exposures"], logs)
-            lapse = GPhoto2Timelapse(seq, logs, restored_state["lapse"])
+            logr = Logger(restored_state["logs"])
+            seq = Sequence(restored_state["exposures"], logr)
+            lapse = GPhoto2Timelapse(seq, logr, restored_state["lapse"])
 
-            logs.log("State restored from disk.  Here we go again!")
+            logr.log("State restored from disk.  Here we go again!")
 
     except (FileNotFoundError, JSONDecodeError):
 
@@ -30,29 +30,29 @@ try:
             exposures = json.load(data_file)
 
             # make sure these are globals
-            logs = Logger()
-            seq = Sequence(exposures, logs)
-            lapse = GPhoto2Timelapse(seq, logs)
+            logr = Logger()
+            seq = Sequence(exposures, logr)
+            lapse = GPhoto2Timelapse(seq, logr)
 
-            logs.log("New lapse started by `timelapse_server`")
+            logr.log("New lapse started by `timelapse_server`")
 
     # and we're off!
     lapse.take_next_picture()
 
-except FileNotFoundError:
-    print("no data.json file found in root directory")
+except FileNotFoundError as e:
+    logr.log("no data.json file found in root directory (error: {})".format(e))
 
 except JSONDecodeError:
-    print("malformed json found in root directory.  please ensure minimal format of [{ \"name\": \"\", \"ts\": 1474075839955 }")
+    logr.log("malformed json found in root directory.  please ensure minimal format of [{ \"name\": \"\", \"ts\": 1474075839955 }")
 
 except TimelapseError as e:
 
-    logs.log("> Timelapse aborted, rebooting system.")
+    logr.log("> Timelapse aborted, rebooting system.")
 
     outgoing_state = {
         "lapse": lapse.get_state(),
         "exposures": seq.get_exposures(),
-        "logs": logs.get_log()
+        "logs": logr.get_log()
     }
 
     # write state to disk
