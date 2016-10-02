@@ -184,9 +184,9 @@ class GPhoto2Timelapse(Timelapse):
 
     def power_cycle_camera(self):
         self.logger.log("> Cutting power to camera")
-        time.sleep(5)
+        time.sleep(10)
         self.logger.log("> Restoring power to camera")
-        time.sleep(5)
+        time.sleep(10)
         self.attempted_power_cycle_camera = True
 
     def killall_ptp(self):
