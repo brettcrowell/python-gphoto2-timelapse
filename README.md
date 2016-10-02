@@ -37,6 +37,15 @@ nvm use stable
 node ./samples/simple-sample.js &> data.json
 ```
 
+## Starting the Lapse
+
+```
+sudo python3 timelapse_server.py
+```
+
+_Why `sudo``?  During the course of the lapse, we may attempt to virtually re-seat the camera's USB conneection.
+To do this, we must delete a system file with `sudo` permissions_
+
 ## Incomplete Webcam stuff...
 
 brew install cmake
