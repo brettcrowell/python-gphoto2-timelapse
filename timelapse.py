@@ -18,7 +18,7 @@ class Timelapse:
     state = {
         "preferences": {
             "max_ms_between_images": 600000,
-            "max_ms_image_capture": 60000,
+            "max_ms_image_capture": 90000,
             "min_image_kb": 100000,
             "location": os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
         },
