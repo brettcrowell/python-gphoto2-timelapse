@@ -61,3 +61,7 @@ except ValueError:
 except TimelapseError as e:
     logr.log("> Timelapse aborted, rebooting system.")
     save_state_to_disk('saved_state.json')
+
+except Exception as e:
+    logr.log("> Unknown error occurred, rebooting system (error: {})".format(e))
+    save_state_to_disk('saved_state.json')

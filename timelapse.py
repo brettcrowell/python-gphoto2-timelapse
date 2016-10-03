@@ -282,8 +282,10 @@ class GPhoto2Timelapse(Timelapse):
 
             # delete all photos stored on the camera
             gp.error_severity[gp.GP_ERROR] = logging.WARNING
-            for image in self.list_files(camera, context):
-                self.delete_file(camera, context, image)
+            camera_image_list = self.list_files(camera, context)
+            if isinstance(camera_image_list, (tuple, list)):
+                for image in camera_image_list:
+                    self.delete_file(camera, context, image)
 
             # if we made it here, the camera must be working
             self.reset_medication_attempts()
