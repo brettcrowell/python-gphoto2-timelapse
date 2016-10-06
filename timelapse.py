@@ -50,7 +50,7 @@ class Timelapse:
     def upload_to_s3(self, image_path, image):
         return None
 
-    def take_next_picture(self, delay = 0):
+    def get_next_image(self, ms_image_delay = 0):
 
         next_image = None
 
@@ -70,9 +70,16 @@ class Timelapse:
 
             # standard lookup for next image
             if (self.sequence.has_more_images()):
-                next_image = self.sequence.get_next_image(delay)
+                next_image = self.sequence.get_next_image(ms_image_delay)
 
-        if next_image:
+        return next_image
+
+    def take_next_picture(self):
+
+        ms_image_delay = 0
+        next_image = self.get_next_image(ms_image_delay)
+
+        while(next_image):
 
             # determine how long we need to wait
             current_ts = int(round(time.time() * 1000))
@@ -134,11 +141,10 @@ class Timelapse:
 
             self.logger.log("Capture complete (main thread blocked for {}s)".format(ms_image_delay / 1000))
 
-            # recurse
-            self.take_next_picture(ms_image_delay)
+            # grab the next image, allowing the loop to either continue or break
+            next_image = self.get_next_image(ms_image_delay)
 
-        else:
-            self.logger.log("done")
+        self.logger.log("done")
 
 class GPhoto2Timelapse(Timelapse):
 
