@@ -9,7 +9,7 @@ This project allows users to run clock-time based timelapses using Python, gPhot
   * 2 male-female DuPont/jumper wires also required
 * gPhoto2 Compatible Camera with Power Adapter & USB Cable
   * Tested with Canon 6D and Nikon CoolPix S3300
-  * For Nikon, UC-E6 USB cable & EH-62G AC Adapter required
+  * For Nikon, UC-E6 USB cable & EH-62G A/C Adapter required
 
 ### Other Recommendations
 
@@ -20,14 +20,19 @@ This project allows users to run clock-time based timelapses using Python, gPhot
 
 ### Hardware Setup
 
+- Plug your RPi and IoT Relay into separate wall outlets (same recepticle is fine)
+- Plug your Camera into a "Normally On" outlet on the relay
+- Connect your camera's USB output to the RPi
+- Install Jumper wires between the RPi's GPIO pins and the IoT Relay (see next section)
+
 #### Relay Setup for Power Toggle
 
-If your camera becomes unresponsive during the lapse, we'll use the IoT Relay to unplug it and plug it back in.  Specifically, we'll configure the relay such that power is *normally on*.  If the camera fails, we'll activate a signal on the RPi's GPIO pin.  While the signal is hot, the relay will remain *off*.  Once we deactivate the signal, the relay will switch back *on* again and we'll wait a few seconds for the camera to boot.
+If your camera becomes unresponsive during the lapse, we'll use the IoT Relay to unplug it and plug it back in.  Specifically, we'll configure the relay such that power is *normally on*.  If the camera fails, we'll activate a signal on the RPi's GPIO pin.  When that signal is hot, the relay will switch *off*.  Once we deactivate the signal, the relay will switch back *on* again and we'll wait a few seconds for the camera to boot.
 
-- Plug the signal/hot wire into BCM Pin #3 (Pi Pin #5) on your RPi
-- Plug the ground wire into Ground Pin #6
-- Match Hot to + and Ground to -, and plug wires into the IoT Relay
-- Plug the camera power adapter into a "Normally On" outlet
+- Plug the signal/hot wire into BCM Pin #3 (RPi Pin #5)
+- Plug the ground wire into RPi Pin #6 (Ground)
+- Matching Hot to (+) and Ground to (-), plug jumpers into the relay
+- Ensure that the camera power adapter is seated in a "Normally On" outlet
 
 Learn more about the pins on your Raspberry Pi here...
 
