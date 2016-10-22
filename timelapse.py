@@ -9,6 +9,7 @@ from logger import Logger
 from timelapse_errors import TimeoutError, TimelapseError
 from fcntl import ioctl
 import logging
+import RPi.GPIO as GPIO
 
 class Timelapse:
     
@@ -20,7 +21,9 @@ class Timelapse:
             "max_ms_between_images": 600000,
             "max_ms_image_capture": 90000,
             "min_image_kb": 100000,
-            "location": os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+            "location": os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__))),
+            "power_signal_pin": 3,
+            "camera_cycle_time": 10
         },
         "failed_image": None,
         "deferred_image": None
@@ -37,6 +40,11 @@ class Timelapse:
         # make sure the output and log directories exist @todo log directory
         if not os.path.exists(os.path.join(self.state['preferences']['location'], 'output')):
             os.makedirs(os.path.join(self.state['preferences']['location'], 'output'))
+
+        self.prelapse()
+
+    def prelapse(self):
+        raise NotImplementedError
 
     def get_state(self):
         return self.state
@@ -197,10 +205,20 @@ class GPhoto2Timelapse(Timelapse):
         self.attempted_reset_usb = True
 
     def power_cycle_camera(self):
+
+        power_signal_pin = self.state["preferences"]["power_signal_pin"]
+        camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
+
         self.logger.log("> Cutting power to camera")
-        time.sleep(10)
+        GPIO.output(power_signal_pin, GPIO.HIGH)
+
+        time.sleep(camera_cycle_time)
+
         self.logger.log("> Restoring power to camera")
-        time.sleep(10)
+        GPIO.output(power_signal_pin, GPIO.LOW)
+
+        time.sleep(camera_cycle_time)
+
         self.attempted_power_cycle_camera = True
 
     def killall_ptp(self):
@@ -242,6 +260,18 @@ class GPhoto2Timelapse(Timelapse):
         gp.check_result(gp.gp_camera_file_delete(camera, folder, name, context))
 
     ## overrides
+
+    def prelapse(self):
+
+        # turn on the power port for the camera before the lapse
+        power_signal_pin = self.state["preferences"]["power_signal_pin"]
+        camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(power_signal_pin, GPIO.OUT)
+        GPIO.output(power_signal_pin, GPIO.LOW)
+
+        time.sleep(camera_cycle_time)
 
     def take_picture(self, image):
 
