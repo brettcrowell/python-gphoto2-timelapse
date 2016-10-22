@@ -3,12 +3,13 @@ This project allows users to run clock-time based timelapses using Python, gPhot
 ## Recommended Hardware
 
 * Computer capable of running Python 3 & gPhoto2
-  * Raspberry Pi (CanaKit's RPi3 Model B Kit with MicroSD Card & Raspbian installed) recommended
+  * CanaKit's RPi3 Model B Kit with Raspbian recommended
 * A/C Power Relay
-  * DLI Iot Relay recommended
+  * Digital Loggers IoT Relay recommended
   * 2 male-female DuPont/jumper wires also required
 * gPhoto2 Compatible Camera with Power Adapter & USB Cable
-  * Nikon CoolPix S3300, UC-E6 USB cable, & EH-62G AC Adapter recommended
+  * Tested with Canon 6D and Nikon CoolPix S3300
+  * For Nikon, UC-E6 USB cable & EH-62G AC Adapter required
 
 ### Other Recommendations
 
@@ -17,6 +18,17 @@ This project allows users to run clock-time based timelapses using Python, gPhot
 
 ## Dependencies & Basic Installation
 
+### Hardware Setup
+
+#### Relay Setup for Power Toggle
+
+Learn more about the pins on your Raspberry Pi here...
+
+* http://pinout.xyz/pinout/pin5_gpio3
+* https://learn.sparkfun.com/tutorials/raspberry-gpio/python-rpigpio-example
+
+### Software Setup
+
 This package relies heavily on external software. Below you'll find a crash course to get your Pi up and running. Most other machines should come up by following similar steps.
 
 1) Ensure that Python 3 and PIP3 are installed
@@ -24,7 +36,7 @@ This package relies heavily on external software. Below you'll find a crash cour
 2) Install gPhoto2 using the gPhoto2 Updater (https://github.com/gonzalo/gphoto2-updater)
 
 ```
-$ wget https://raw.githubusercontent.com/gonzalo/gphoto2-updater/master/gphoto2-updater.sh && chmod +x gphoto2-updater.sh && sudo ./gphoto2-updater.sh
+wget https://raw.githubusercontent.com/gonzalo/gphoto2-updater/master/gphoto2-updater.sh && chmod +x gphoto2-updater.sh && sudo ./gphoto2-updater.sh
 ```
 
 3) Clone this repo...
@@ -34,21 +46,30 @@ cd ~/
 git clone git@github.com:brettcrowell/python-gphoto2-timelapse.git
 ```
 
-4) Install Python dependencies
+4) Create a new Python Virtual Environment to isolate this app from your overall environment...
 
 ```
-pip3 install -r requirements.txt
+cd ~/python-gphoto2-timelapse
+sudo pip3 install virtualenv
+virtualenv timelapse
+source timelapse/bin/activate
 ```
 
-## Hardware Setup
+5) Install Python dependencies
+
+```
+sudo pip3 install -r requirements.txt
+```
+
+_Why `sudo``?  During the course of the lapse, we may attempt to virtually re-seat the camera's USB conneection.  To do this, we must delete a system file with `sudo` permissions_
 
 ## Creating Sequences
 
-Though the timelapse itself has no dependency on Node, the sample sequence generators are written with Javascipt.
-Therefore, to use them, ensure you have `nvm` installed...
+Though the timelapse itself has no dependency on Node, the sample sequence generators are written with Javascipt.  Therefore, to use them, ensure you have `nvm` installed...
 
 ```
-curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.32.0/install.sh | bash
+curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+sudo apt install -y nodejs
 ```
 
 To run them with the latest Node version...
@@ -92,9 +113,6 @@ node ./samples/simple-sample.js &> data.json
 ```
 sudo python3 timelapse_server.py
 ```
-
-_Why `sudo``?  During the course of the lapse, we may attempt to virtually re-seat the camera's USB conneection.  To do this, we must delete a system file with `sudo` permissions_
-
 
 ## Incomplete Webcam stuff...
 
