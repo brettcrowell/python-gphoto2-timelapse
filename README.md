@@ -2,9 +2,13 @@ This project allows users to run clock-time based timelapses using Python, gPhot
 
 ## Recommended Hardware
 
-- Raspberry Pi (CanaKit's RPi3 Model B Kit is recommended) with MicroSD Card & Raspbian installed
-- DLI Iot Relay & 2 male-female DuPont/jumper wires
-- gPhoto2 Compatible Camera with Power Adapter & USB (ex. Nikon CoolPix S3300, UC-E6 USB cable & EH-62G AC Adapter)
+* Computer capable of running Python 3 & gPhoto2
+  * Raspberry Pi (CanaKit's RPi3 Model B Kit with MicroSD Card & Raspbian installed) recommended
+* A/C Power Relay
+  * DLI Iot Relay recommended
+  * 2 male-female DuPont/jumper wires also required
+* gPhoto2 Compatible Camera with Power Adapter & USB Cable
+  * Nikon CoolPix S3300, UC-E6 USB cable, & EH-62G AC Adapter recommended
 
 ### Other Recommendations
 
