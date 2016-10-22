@@ -22,6 +22,13 @@ This project allows users to run clock-time based timelapses using Python, gPhot
 
 #### Relay Setup for Power Toggle
 
+If your camera becomes unresponsive during the lapse, we'll use the IoT Relay to unplug it and plug it back in.  Specifically, we'll configure the relay such that power is *normally on*.  If the camera fails, we'll activate a signal on the RPi's GPIO pin.  While the signal is hot, the relay will remain *off*.  Once we deactivate the signal, the relay will switch back *on* again and we'll wait a few seconds for the camera to boot.
+
+- Plug the signal/hot wire into BCM Pin #3 (Pi Pin #5) on your RPi
+- Plug the ground wire into Ground Pin #6
+- Match Hot to + and Ground to -, and plug wires into the IoT Relay
+- Plug the camera power adapter into a "Normally On" outlet
+
 Learn more about the pins on your Raspberry Pi here...
 
 * http://pinout.xyz/pinout/pin5_gpio3
