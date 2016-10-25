@@ -75,6 +75,21 @@ sudo pip3 install -r requirements.txt
 
 _Why `sudo``?  During the course of the lapse, we may attempt to virtually re-seat the camera's USB conneection.  To do this, we must delete a system file with `sudo` permissions_
 
+6) Mark the Server's Shell script as executable...
+
+```
+chmod 755 timelapse_server.sh
+```
+
+7) Launch the Timelapse Server every time your computer boots...
+
+```
+sudo nano /etc/rc.local
+sh /home/pi/python-gphoto2-timelapse/timelapse_server.sh
+```
+
+https://www.raspberrypi.org/documentation/linux/usage/rc-local.md
+
 ## Creating Sequences
 
 Though the timelapse itself has no dependency on Node, the sample sequence generators are written with Javascipt.  Therefore, to use them, ensure you have `nvm` installed...
@@ -123,8 +138,36 @@ node ./samples/simple-sample.js &> data.json
 ### Running the Lapse
 
 ```
-sudo python3 timelapse_server.py
+./timelapse_server.sh
 ```
+
+### Retrieving Images from RPi
+
+If you are not using a cloud storage setup (ex. S3), you may find these steps useful to copy the output images to a USB drive.
+
+1) Plug in the drive and mount it as follows...
+
+```
+sudo fdisk -l
+sudo  mkdir /usb
+sudo mount /dev/sdb1 /usb
+sudo umount /usb
+```
+
+http://askubuntu.com/a/37775
+
+2) Copy the Timelapse `output` directory...
+
+```
+cd ~/python-gphoto2-timelapse
+sudo cp -avr output/ /usb/output
+```
+
+http://www.cyberciti.biz/faq/copy-folder-linux-command-line/
+
+### Assembling the Timelapse with Photoshop
+
+https://www.youtube.com/watch?v=o8lxUXH0YSg
 
 ## Incomplete Webcam stuff...
 
