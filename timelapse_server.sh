@@ -1,6 +1,6 @@
 #!/bin/sh
 # timelapse_server.sh
 
-cd ~/python-gphoto2-timelapse
+cd /home/pi/python-gphoto2-timelapse
 . ./timelapse/bin/activate
-nohup sudo -b python3 timelapse_server.py &
+nohup sudo -b python3 ./timelapse_server.py &
