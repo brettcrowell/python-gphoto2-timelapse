@@ -73,7 +73,7 @@ source timelapse/bin/activate
 sudo pip3 install -r requirements.txt
 ```
 
-_Why `sudo``?  During the course of the lapse, we may attempt to virtually re-seat the camera's USB conneection.  To do this, we must delete a system file with `sudo` permissions_
+_Why `sudo`?  During the course of the lapse, we may attempt to virtually re-seat the camera's USB conneection.  To do this, we must delete a system file with `sudo` permissions_
 
 6) Mark the Server's Shell script as executable...
 
@@ -81,12 +81,14 @@ _Why `sudo``?  During the course of the lapse, we may attempt to virtually re-se
 chmod 755 timelapse_server.sh
 ```
 
-7) Launch the Timelapse Server every time your computer boots...
+7) For extra fail-protection, launch the timelapse server each time your RPi boots (technique under review)
 
-```
-sudo nano /etc/rc.local
-sh /home/pi/python-gphoto2-timelapse/timelapse_server.sh
-```
+  - Ensure that your `pi` user can automatically login (https://www.raspberrypi.org/forums/viewtopic.php?f=28&t=127042)
+  - Edit your `/etc/profile` and add the following line...
+ 
+  ```
+  sh /home/pi/python-gphoto2-timelapse/timelapse_server.sh
+  ```
 
 https://www.raspberrypi.org/documentation/linux/usage/rc-local.md
 
@@ -127,7 +129,7 @@ By default, this list will be stored in a file called `data.json`
 
 _Note: If bucket is omitted, no attempt will be made to upload to S3, and images will be stored in the ./output directory._
 
-### Creating a custom Sequene in Javascript
+### Creating a custom Sequence in Javascript
 
 In the `./samples` directory, you'll find a few Javascript files that illustrate how to create JSON Sequences in Node.  To run them (and create a new `data.json` file)...
 
