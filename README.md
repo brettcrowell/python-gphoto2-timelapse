@@ -43,7 +43,12 @@ Learn more about the pins on your Raspberry Pi here...
 
 This package relies heavily on external software. Below you'll find a crash course to get your Pi up and running. Most other machines should come up by following similar steps.
 
-1) Ensure that Python 3 and PIP3 are installed
+1) Ensure that Python 3 and PIP3 are installed.  If not...
+
+```
+sudo apt-get update
+sudo apt-get install python3-pip
+```
 
 2) Install gPhoto2 using the gPhoto2 Updater (https://github.com/gonzalo/gphoto2-updater)
 
