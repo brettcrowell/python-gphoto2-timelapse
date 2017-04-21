@@ -33,7 +33,7 @@ try:
 
             logr.log("State restored from disk.  Here we go again!")
 
-    except (FileNotFoundError, ValueError):
+    except (OSError, ValueError):
 
         with open("data.json") as data_file:
 
@@ -52,7 +52,7 @@ try:
 
     save_state_to_disk('results.json')
 
-except FileNotFoundError as e:
+except OSError as e:
     logr.log("no data.json file found in root directory (error: {})".format(e))
 
 except ValueError:
