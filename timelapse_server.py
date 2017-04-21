@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import json
 from timelapse import GPhoto2Timelapse
 from sequence import Sequence
