@@ -78,7 +78,7 @@ source timelapse/bin/activate
 sudo pip3 install -r requirements.txt
 ```
 
-_Why `sudo`?  During the course of the lapse, we may attempt to virtually re-seat the camera's USB conneection.  To do this, we must delete a system file with `sudo` permissions_
+_Depending on your particular Python installation, `pip3` may be called, for example, `pip-3.2`_
 
 6) Mark the Server's Shell script as executable...
 
