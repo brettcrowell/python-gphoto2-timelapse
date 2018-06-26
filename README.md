@@ -48,6 +48,7 @@ This package relies heavily on external software. Below you'll find a crash cour
 ```
 sudo apt-get update
 sudo apt-get install python3-pip
+sudo apt-get install python3-dev
 ```
 
 2) Install gPhoto2 using the gPhoto2 Updater (https://github.com/gonzalo/gphoto2-updater)
