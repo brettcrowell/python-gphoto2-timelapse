@@ -142,9 +142,8 @@ class Timelapse:
 
                 if ('bucket' in next_image_meta):
 
-                    # asynchronously upload this image to s3 if there is a bucket specified
-                    amazon_upload_thread = threading.Thread(target=self.upload_to_s3, args=(image_path, next_image_meta))
-                    amazon_upload_thread.start()
+                    # synchronously upload this image to s3 if there is a bucket specified
+                    self.upload_to_s3(image_path, next_image_meta)
 
             except TimeoutError as ex:
                 self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image_meta['name'],
