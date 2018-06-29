@@ -9,6 +9,7 @@ from logger import Logger
 from timelapse_errors import TimeoutError, TimelapseError
 from fcntl import ioctl
 import logging
+import boto3
 import RPi.GPIO as GPIO
 
 class Timelapse:
@@ -55,7 +56,16 @@ class Timelapse:
     def take_picture(self, image):
         raise NotImplementedError
 
-    def upload_to_s3(self, image_path, image):
+    def upload_to_s3(self, image_path, image_meta):
+        s3 = boto3.client('s3')
+
+        filename = "{}/{}.jpg".format(image_meta['name'], image_meta['ts'])
+        bucket_name = image_meta['bucket']
+
+        s3.upload_file(image_path, bucket_name, filename)
+
+        os.remove(image_path)
+
         return None
 
     def get_next_image(self, ms_image_delay = 0):
@@ -85,23 +95,23 @@ class Timelapse:
     def take_next_picture(self):
 
         ms_image_delay = 0
-        next_image = self.get_next_image(ms_image_delay)
+        next_image_meta = self.get_next_image(ms_image_delay)
 
-        while(next_image):
+        while(next_image_meta):
 
             # determine how long we need to wait
             current_ts = int(round(time.time() * 1000))
             max_ms_between_images = self.state['preferences']['max_ms_between_images']
-            ms_until_next_image = next_image['ts'] - current_ts
+            ms_until_next_image = next_image_meta['ts'] - current_ts
 
             if(ms_until_next_image > max_ms_between_images):
 
                 # some cameras have been known to 'drop off' if they aren't accessed frequently enough.
                 # the following provision will take a throwaway image every (default 60 mins) to prevent that.
 
-                self.state['deferred_image'] = next_image
+                self.state['deferred_image'] = next_image_meta
 
-                next_image = {
+                next_image_meta = {
                     'name': 'keep-alive-signal',
                     'ts': current_ts + max_ms_between_images,
                     'discard': True
@@ -113,8 +123,8 @@ class Timelapse:
             # how many seconds until we shoot again?  min should be 0s
             sec_until_next_image = max(ms_until_next_image / 1000, 0)
 
-            self.logger.log("Next image (`{}-{}`) will be taken in {} seconds".format(next_image['name'],
-                                                                            next_image['ts'],
+            self.logger.log("Next image (`{}-{}`) will be taken in {} seconds".format(next_image_meta['name'],
+                                                                            next_image_meta['ts'],
                                                                             sec_until_next_image))
 
             # and now, we wait (gotta love synchronous code)
@@ -128,29 +138,29 @@ class Timelapse:
 
                 # at long last, the next_image's time has arrived.  capture!
                 with timeout(seconds=sec_capture_timeout):
-                    image_path = self.take_picture(next_image)
+                    image_path = self.take_picture(next_image_meta)
 
-                if ('bucket' in next_image):
+                if ('bucket' in next_image_meta):
 
                     # asynchronously upload this image to s3 if there is a bucket specified
-                    amazon_upload_thread = threading.Thread(target=self.upload_to_s3, args=(image_path, next_image))
+                    amazon_upload_thread = threading.Thread(target=self.upload_to_s3, args=(image_path, next_image_meta))
                     amazon_upload_thread.start()
 
             except TimeoutError as ex:
-                self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image['name'],
-                                                                                    next_image['ts'],
+                self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image_meta['name'],
+                                                                                    next_image_meta['ts'],
                                                                                     sec_capture_timeout))
-                self.state["failed_image"] = next_image
+                self.state["failed_image"] = next_image_meta
                 self.destruct()
 
             # calculate how far behind schedule we are
             current_ts = int(round(time.time() * 1000))
-            ms_image_delay = current_ts - next_image['ts']
+            ms_image_delay = current_ts - next_image_meta['ts']
 
             self.logger.log("Capture complete (main thread blocked for {}s)".format(ms_image_delay / 1000))
 
             # grab the next image, allowing the loop to either continue or break
-            next_image = self.get_next_image(ms_image_delay)
+            next_image_meta = self.get_next_image(ms_image_delay)
 
         self.logger.log("done")
 
