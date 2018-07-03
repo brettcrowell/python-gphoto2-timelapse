@@ -192,7 +192,7 @@ ffmpeg \
   -pattern_type glob \
   -framerate 30 \
   -i "*.jpg" \
-  -filter "minterpolate='fps=30:mi_mode=mci:mc_mode=aobmc'" \
+  -filter "minterpolate='fps=30:mi_mode=mci:mc_mode=aobmc:me=esa'" \
   -c:v libx264 \
   -preset slow \
   -crf 22 \
