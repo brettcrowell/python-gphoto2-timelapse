@@ -48,7 +48,7 @@ This package relies heavily on external software. Below you'll find a crash cour
 ```
 sudo apt-get update
 sudo apt-get install python3-pip
-sudo apt-get install python3-dev
+# sudo apt-get install python3-dev (on some machines)
 ```
 
 2) Install gPhoto2 using the gPhoto2 Updater (https://github.com/gonzalo/gphoto2-updater)
@@ -56,6 +56,8 @@ sudo apt-get install python3-dev
 ```
 wget https://raw.githubusercontent.com/gonzalo/gphoto2-updater/master/gphoto2-updater.sh && chmod +x gphoto2-updater.sh && sudo ./gphoto2-updater.sh
 ```
+
+Note that in rare cases, it may be necessary to specify an older version of `gphoto2` and `libgphoto2` by cloning the Updater and hard-coding the required version.
 
 3) Clone this repo...
 
@@ -77,6 +79,7 @@ source timelapse/bin/activate
 
 ```
 sudo pip3 install -r requirements.txt
+sudo pip3 install RPi.GPIO
 ```
 
 _Depending on your particular Python installation, `pip3` may be called, for example, `pip-3.2`_
@@ -100,19 +103,16 @@ https://www.raspberrypi.org/documentation/linux/usage/rc-local.md
 
 ## Creating Sequences
 
-Though the timelapse itself has no dependency on Node, the sample sequence generators are written with Javascipt.  Therefore, to use them, ensure you have `nvm` installed...
+Though the timelapse itself has no dependency on Node, the sample sequence generators are written with Javascipt.  Therefore, to use them, ensure you have `nvm` installed.  Follow the directions there to get started!
 
-```
-curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
-sudo apt install -y nodejs
-```
+https://github.com/creationix/nvm
 
-To run them with the latest Node version...
+Adjust your sample generator, then with NVM and a stable Node version...
 
 ```
 cd ~/git/python-gphoto2-timelapse/
 nvm use stable
-node ./samples/simple-sample.js &> data.json
+node ./samples/simple-sample.js > data.json
 ```
 
 ## Usage
@@ -173,7 +173,11 @@ sudo cp -avr output/ /usb/output
 
 http://www.cyberciti.biz/faq/copy-folder-linux-command-line/
 
-### Assembling the Timelapse with Photoshop
+## Assembling the Timelapse
+
+### With `ffmpeg`
+
+### With Photoshop
 
 https://www.youtube.com/watch?v=o8lxUXH0YSg
 
