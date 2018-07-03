@@ -45,7 +45,7 @@ This package relies heavily on external software. Below you'll find a crash cour
 
 1) Ensure that Python 3 and PIP3 are installed.  If not...
 
-```
+```sh
 sudo apt-get update
 sudo apt-get install python3-pip
 # sudo apt-get install python3-dev (on some machines)
@@ -53,7 +53,7 @@ sudo apt-get install python3-pip
 
 2) Install gPhoto2 using the gPhoto2 Updater (https://github.com/gonzalo/gphoto2-updater)
 
-```
+```sh
 wget https://raw.githubusercontent.com/gonzalo/gphoto2-updater/master/gphoto2-updater.sh && chmod +x gphoto2-updater.sh && sudo ./gphoto2-updater.sh
 ```
 
@@ -61,14 +61,14 @@ Note that in rare cases, it may be necessary to specify an older version of `gph
 
 3) Clone this repo...
 
-```
+```sh
 cd ~/
 git clone git@github.com:brettcrowell/python-gphoto2-timelapse.git
 ```
 
 4) Create a new Python Virtual Environment to isolate this app from your overall environment...
 
-```
+```sh
 cd ~/python-gphoto2-timelapse
 sudo pip3 install virtualenv
 virtualenv timelapse
@@ -77,7 +77,7 @@ source timelapse/bin/activate
 
 5) Install Python dependencies
 
-```
+```sh
 sudo pip3 install -r requirements.txt
 sudo pip3 install RPi.GPIO
 ```
@@ -86,7 +86,7 @@ _Depending on your particular Python installation, `pip3` may be called, for exa
 
 6) Mark the Server's Shell script as executable...
 
-```
+```sh
 chmod 755 timelapse_server.sh
 ```
 
@@ -95,7 +95,7 @@ chmod 755 timelapse_server.sh
   - Ensure that your `pi` user can automatically login (https://www.raspberrypi.org/forums/viewtopic.php?f=28&t=127042)
   - Edit your `/etc/profile` and add the following line...
  
-  ```
+  ```sh
   sh /home/pi/python-gphoto2-timelapse/timelapse_server.sh
   ```
 
@@ -109,7 +109,7 @@ https://github.com/creationix/nvm
 
 Adjust your sample generator, then with NVM and a stable Node version...
 
-```
+```sh
 cd ~/git/python-gphoto2-timelapse/
 nvm use stable
 node ./samples/simple-sample.js > data.json
@@ -121,7 +121,7 @@ node ./samples/simple-sample.js > data.json
 
 As mentioned above, this package allows you to create timelapses based on clock-time.  As such, the input to the application should be a list of UTC timestamps (surrounded by some meta-data) that looks roughly like this...
 
-```
+```sh
 [
     {
       name: 'sunrise',
@@ -139,23 +139,25 @@ _Note: If bucket is omitted, no attempt will be made to upload to S3, and images
 
 In the `./samples` directory, you'll find a few Javascript files that illustrate how to create JSON Sequences in Node.  To run them (and create a new `data.json` file)...
 
-```
+```sh
 node ./samples/simple-sample.js &> data.json
 ```
 
 ### Running the Lapse
 
-```
+```sh
 ./timelapse_server.sh
 ```
 
-### Retrieving Images from RPi
+## Retrieving Images
+
+### From the RPi
 
 If you are not using a cloud storage setup (ex. S3), you may find these steps useful to copy the output images to a USB drive.
 
 1) Plug in the drive and mount it as follows...
 
-```
+```sh
 sudo fdisk -l
 sudo  mkdir /usb
 sudo mount /dev/sdb1 /usb
@@ -166,16 +168,37 @@ http://askubuntu.com/a/37775
 
 2) Copy the Timelapse `output` directory...
 
-```
+```sh
 cd ~/python-gphoto2-timelapse
 sudo cp -avr output/ /usb/output
 ```
 
 http://www.cyberciti.biz/faq/copy-folder-linux-command-line/
 
+### From S3
+
+```sh
+cd ~/Documents
+mkdir ${lapseName}
+aws s3 sync s3://${bucket}/${lapseName} ./${lapseName} --profile ${credentialsProfile}
+```
+
 ## Assembling the Timelapse
 
 ### With `ffmpeg`
+
+```sh
+ffmpeg \
+  -pattern_type glob \
+  -framerate 30 \
+  -i "*.jpg" \
+  -filter "minterpolate='fps=30:mi_mode=mci:mc_mode=aobmc'" \
+  -c:v libx264 \
+  -preset slow \
+  -crf 22 \
+  -vf scale=-2:1080 \
+  Timelapse_output.m4v
+```
 
 ### With Photoshop
 
