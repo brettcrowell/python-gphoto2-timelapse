@@ -125,7 +125,6 @@ As mentioned above, this package allows you to create timelapses based on clock-
 [
     {
       name: 'sunrise',
-      bucket: 'bcrowell-timelapse',
       ts: 1425380400000
     }
 ]
@@ -141,6 +140,13 @@ In the `./samples` directory, you'll find a few Javascript files that illustrate
 
 ```sh
 node ./samples/simple-sample.js &> data.json
+```
+
+### Environment Variables
+
+```sh
+# the name of the s3 bucket images should be uploaded to (under directory "name")
+export TIMELAPSE_BUCKET=bucket-name
 ```
 
 ### Running the Lapse

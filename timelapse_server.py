@@ -5,6 +5,7 @@ from timelapse import GPhoto2Timelapse
 from sequence import Sequence
 from logger import Logger
 from timelapse_errors import TimelapseError
+from uploader import S3BucketUploader
 import os
 
 def save_state_to_disk(filename):
@@ -31,7 +32,9 @@ try:
             # make sure these are globals
             logr = Logger(restored_state["logs"])
             seq = Sequence(restored_state["exposures"], logr)
-            lapse = GPhoto2Timelapse(seq, logr, restored_state["lapse"])
+            uploader = S3BucketUploader()
+
+            lapse = GPhoto2Timelapse(seq, uploader, logr, restored_state["lapse"])
 
             logr.log("State restored from disk.  Here we go again!")
 
@@ -45,7 +48,9 @@ try:
             # make sure these are globals
             logr = Logger()
             seq = Sequence(exposures, logr)
-            lapse = GPhoto2Timelapse(seq, logr)
+            uploader = S3BucketUploader()
+
+            lapse = GPhoto2Timelapse(seq, uploader, logr)
 
             logr.log("New lapse started by `timelapse_server`")
 

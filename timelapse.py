@@ -1,7 +1,6 @@
 import time
 import os
 import re
-import threading
 import signal
 import gphoto2 as gp
 from subprocess import call
@@ -9,7 +8,6 @@ from logger import Logger
 from timelapse_errors import TimeoutError, TimelapseError
 from fcntl import ioctl
 import logging
-import boto3
 import RPi.GPIO as GPIO
 
 class Timelapse:
@@ -30,9 +28,10 @@ class Timelapse:
         "deferred_image": None
     }
 
-    def __init__(self, sequence, logger = Logger(), initial_state = None):
+    def __init__(self, sequence, uploader, logger = Logger(), initial_state = None):
 
         self.sequence = sequence
+        self.uploader = uploader
         self.logger = logger
 
         if(initial_state):
@@ -55,18 +54,6 @@ class Timelapse:
 
     def take_picture(self, image):
         raise NotImplementedError
-
-    def upload_to_s3(self, image_path, image_meta):
-        s3 = boto3.client('s3')
-
-        filename = "{}/{}.jpg".format(image_meta['name'], image_meta['ts'])
-        bucket_name = image_meta['bucket']
-
-        s3.upload_file(image_path, bucket_name, filename)
-
-        os.remove(image_path)
-
-        return None
 
     def get_next_image(self, ms_image_delay = 0):
 
@@ -140,10 +127,8 @@ class Timelapse:
                 with timeout(seconds=sec_capture_timeout):
                     image_path = self.take_picture(next_image_meta)
 
-                if ('bucket' in next_image_meta):
-
-                    # synchronously upload this image to s3 if there is a bucket specified
-                    self.upload_to_s3(image_path, next_image_meta)
+                # synchronously upload this image
+                self.uploader.upload(image_path, next_image_meta)
 
             except TimeoutError as ex:
                 self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image_meta['name'],
