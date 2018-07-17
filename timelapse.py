@@ -7,6 +7,7 @@ from subprocess import call
 from logger import Logger
 from timelapse_errors import TimeoutError, TimelapseError
 from fcntl import ioctl
+from threading import Thread
 import logging
 import RPi.GPIO as GPIO
 
@@ -54,6 +55,11 @@ class Timelapse:
 
     def take_picture(self, image):
         raise NotImplementedError
+
+    def upload_image(self, image_path, image_meta):
+        image_upload_thread = Thread(
+            target=self.uploader.upload, args=(image_path, image_meta))
+        image_upload_thread.start()
 
     def get_next_image(self, ms_image_delay = 0):
 
@@ -127,8 +133,8 @@ class Timelapse:
                 with timeout(seconds=sec_capture_timeout):
                     image_path = self.take_picture(next_image_meta)
 
-                # synchronously upload this image
-                self.uploader.upload(image_path, next_image_meta)
+                # asynchronously upload this image
+                self.upload_image(image_path, next_image_meta)
 
             except TimeoutError as ex:
                 self.logger.log("Image (`{}-{}`) failed to capture in {}s.  Aborting.".format(next_image_meta['name'],
