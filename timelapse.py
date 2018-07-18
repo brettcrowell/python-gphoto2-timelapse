@@ -9,7 +9,10 @@ from timelapse_errors import TimeoutError, TimelapseError
 from fcntl import ioctl
 from threading import Thread
 import logging
-import RPi.GPIO as GPIO
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    GPIO = None
 
 class Timelapse:
     
@@ -206,20 +209,22 @@ class GPhoto2Timelapse(Timelapse):
 
     def power_cycle_camera(self):
 
-        power_signal_pin = self.state["preferences"]["power_signal_pin"]
-        camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
+        if GPIO:
 
-        self.logger.log("> Cutting power to camera")
-        GPIO.output(power_signal_pin, GPIO.HIGH)
+            power_signal_pin = self.state["preferences"]["power_signal_pin"]
+            camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
 
-        time.sleep(camera_cycle_time)
+            self.logger.log("> Cutting power to camera")
+            GPIO.output(power_signal_pin, GPIO.HIGH)
 
-        self.logger.log("> Restoring power to camera")
-        GPIO.output(power_signal_pin, GPIO.LOW)
+            time.sleep(camera_cycle_time)
 
-        time.sleep(camera_cycle_time)
+            self.logger.log("> Restoring power to camera")
+            GPIO.output(power_signal_pin, GPIO.LOW)
 
-        self.attempted_power_cycle_camera = True
+            time.sleep(camera_cycle_time)
+
+            self.attempted_power_cycle_camera = True
 
     def killall_ptp(self):
         self.logger.log("> Killing PTPCamera")
@@ -263,15 +268,17 @@ class GPhoto2Timelapse(Timelapse):
 
     def prelapse(self):
 
-        # turn on the power port for the camera before the lapse
-        power_signal_pin = self.state["preferences"]["power_signal_pin"]
-        camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
+        if GPIO:
 
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(power_signal_pin, GPIO.OUT)
-        GPIO.output(power_signal_pin, GPIO.LOW)
+            # turn on the power port for the camera before the lapse
+            power_signal_pin = self.state["preferences"]["power_signal_pin"]
+            camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
 
-        time.sleep(camera_cycle_time)
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(power_signal_pin, GPIO.OUT)
+            GPIO.output(power_signal_pin, GPIO.LOW)
+
+            time.sleep(camera_cycle_time)
 
     def take_picture(self, image):
 
