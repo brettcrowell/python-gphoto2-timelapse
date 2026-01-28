@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
+import os
+
 from timelapse import GPhoto2Timelapse
 from sequence import Sequence
 from logger import Logger
 from timelapse_errors import TimelapseError
-import os
+
+parser = argparse.ArgumentParser(description="Run a clock-time based timelapse")
+parser.add_argument("--file", default="data.json", help="JSON file containing exposure sequence")
+args = parser.parse_args()
 
 def save_state_to_disk(filename):
 
@@ -37,7 +43,7 @@ try:
 
     except (OSError, ValueError):
 
-        with open("data.json") as data_file:
+        with open(args.file) as data_file:
 
             # otherwise start a new one
             exposures = json.load(data_file)
@@ -55,7 +61,7 @@ try:
     save_state_to_disk('results.json')
 
 except OSError as e:
-    logr.log("no data.json file found in root directory (error: {})".format(e))
+    logr.log("no {} file found in root directory (error: {})".format(args.file, e))
 
 except ValueError:
     logr.log("malformed json found in root directory.  please ensure minimal format of [{ \"name\": \"\", \"ts\": 1474075839955 }")
