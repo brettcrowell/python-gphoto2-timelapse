@@ -5,13 +5,17 @@ import json
 import os
 
 from timelapse import GPhoto2Timelapse
-from sequence import Sequence
+from sequence import Sequence, DelaySequence
 from logger import Logger
 from timelapse_errors import TimelapseError
 
 parser = argparse.ArgumentParser(description="Run a clock-time based timelapse")
-parser.add_argument("--file", default="data.json", help="JSON file containing exposure sequence")
+parser.add_argument("--file", help="JSON file containing exposure sequence")
+parser.add_argument("--delay", type=int, help="Fixed delay in seconds between exposures (runs indefinitely)")
 args = parser.parse_args()
+
+if not args.file and not args.delay:
+    parser.error("either --file or --delay is required")
 
 def save_state_to_disk(filename):
 
@@ -43,17 +47,20 @@ try:
 
     except (OSError, ValueError):
 
-        with open(args.file) as data_file:
+        logr = Logger()
 
-            # otherwise start a new one
-            exposures = json.load(data_file)
-
-            # make sure these are globals
-            logr = Logger()
+        if args.delay:
+            # run indefinitely with fixed delay between exposures
+            seq = DelaySequence(args.delay, logr)
+            logr.log("New lapse started with {}s delay".format(args.delay))
+        else:
+            # load exposures from file
+            with open(args.file) as data_file:
+                exposures = json.load(data_file)
             seq = Sequence(exposures, logr)
-            lapse = GPhoto2Timelapse(seq, logr)
-
             logr.log("New lapse started by `timelapse_server`")
+
+        lapse = GPhoto2Timelapse(seq, logr)
 
     # and we're off!
     lapse.take_next_picture()
