@@ -14,8 +14,8 @@ parser.add_argument("--file", help="JSON file containing exposure sequence")
 parser.add_argument("--delay", type=int, help="Fixed delay in seconds between exposures (runs indefinitely)")
 args = parser.parse_args()
 
-if not args.file and not args.delay:
-    parser.error("either --file or --delay is required")
+# default: capture 24 hours into 1 minute at 30fps → 1800 frames over 86400s → 48s delay
+DEFAULT_DELAY = 48
 
 def save_state_to_disk(filename):
 
@@ -49,16 +49,17 @@ try:
 
         logr = Logger()
 
-        if args.delay:
-            # run indefinitely with fixed delay between exposures
-            seq = DelaySequence(args.delay, logr)
-            logr.log("New lapse started with {}s delay".format(args.delay))
-        else:
+        if args.file:
             # load exposures from file
             with open(args.file) as data_file:
                 exposures = json.load(data_file)
             seq = Sequence(exposures, logr)
             logr.log("New lapse started by `timelapse_server`")
+        else:
+            # run indefinitely with fixed delay between exposures
+            delay = args.delay or DEFAULT_DELAY
+            seq = DelaySequence(delay, logr)
+            logr.log("New lapse started with {}s delay".format(delay))
 
         lapse = GPhoto2Timelapse(seq, logr)
 
