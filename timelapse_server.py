@@ -3,19 +3,34 @@
 import argparse
 import json
 import os
+import re
 
 from timelapse import GPhoto2Timelapse
 from sequence import Sequence, DelaySequence
 from logger import Logger
 from timelapse_errors import TimelapseError
 
+def parse_duration(value):
+    """Parse a duration string like '2h', '30m', '90s', or '90' into seconds."""
+    match = re.fullmatch(r'(\d+(?:\.\d+)?)\s*([hms])?', value.strip())
+    if not match:
+        raise argparse.ArgumentTypeError("invalid duration '{}' (expected e.g. 2h, 30m, 90s, or 90)".format(value))
+    amount = float(match.group(1))
+    unit = match.group(2)
+    if unit == 'h':
+        return amount * 3600
+    elif unit == 'm':
+        return amount * 60
+    else:
+        return amount
+
 parser = argparse.ArgumentParser(description="Run a clock-time based timelapse")
 parser.add_argument("--file", help="JSON file containing exposure sequence")
 parser.add_argument("--delay", type=int, help="Fixed delay in seconds between exposures (runs indefinitely)")
+parser.add_argument("--duration", type=str, help="Real-time capture duration (e.g. 2h, 30m, 90s)")
+parser.add_argument("--output", type=str, help="Desired output video length (e.g. 1m, 30s)")
+parser.add_argument("--fps", type=int, default=30, help="Output video frame rate (default: 30)")
 args = parser.parse_args()
-
-# default: capture 24 hours into 1 minute at 30fps → 1800 frames over 86400s → 48s delay
-DEFAULT_DELAY = 48
 
 def save_state_to_disk(filename):
 
@@ -55,11 +70,25 @@ try:
                 exposures = json.load(data_file)
             seq = Sequence(exposures, logr)
             logr.log("New lapse started by `timelapse_server`")
-        else:
+        elif args.delay:
             # run indefinitely with fixed delay between exposures
-            delay = args.delay or DEFAULT_DELAY
-            seq = DelaySequence(delay, logr)
-            logr.log("New lapse started with {}s delay".format(delay))
+            seq = DelaySequence(args.delay, logr)
+            logr.log("New lapse started with {}s delay (runs indefinitely)".format(args.delay))
+        else:
+            # compute delay from duration/output/fps
+            duration_s = parse_duration(args.duration or "24h")
+            output_s = parse_duration(args.output or "1m")
+            total_frames = int(output_s * args.fps)
+            delay = duration_s / total_frames
+
+            # only cap frames if the user explicitly set --duration or --output
+            max_images = total_frames if (args.duration or args.output) else None
+            seq = DelaySequence(delay, logr, max_images=max_images)
+
+            if max_images:
+                logr.log("New lapse started with {:.1f}s delay ({} frames)".format(delay, max_images))
+            else:
+                logr.log("New lapse started with {:.1f}s delay (runs indefinitely)".format(delay))
 
         lapse = GPhoto2Timelapse(seq, logr)
 

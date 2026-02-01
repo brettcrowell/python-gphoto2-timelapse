@@ -5,11 +5,12 @@ from datetime import datetime
 
 class DelaySequence:
 
-    def __init__(self, delay_seconds, logger=Logger()):
+    def __init__(self, delay_seconds, logger=Logger(), max_images=None):
         self.delay_seconds = delay_seconds
         self.delay_ms = delay_seconds * 1000
         self.logger = logger
         self.image_count = 0
+        self.max_images = max_images
 
     def get_exposures(self):
         return []
@@ -23,7 +24,9 @@ class DelaySequence:
         }
 
     def has_more_images(self):
-        return True
+        if self.max_images is None:
+            return True
+        return self.image_count < self.max_images
 
 
 class Sequence:
