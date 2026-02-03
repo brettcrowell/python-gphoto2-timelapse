@@ -30,6 +30,7 @@ parser.add_argument("--delay", type=int, help="Fixed delay in seconds between ex
 parser.add_argument("--duration", type=str, help="Real-time capture duration (e.g. 2h, 30m, 90s)")
 parser.add_argument("--output", type=str, help="Desired output video length (e.g. 1m, 30s)")
 parser.add_argument("--fps", type=int, default=30, help="Output video frame rate (default: 30)")
+parser.add_argument("--name", type=str, default="image", help="Base name for captured images (default: image)")
 args = parser.parse_args()
 
 def save_state_to_disk(filename):
@@ -72,7 +73,7 @@ try:
             logr.log("New lapse started by `timelapse_server`")
         elif args.delay:
             # run indefinitely with fixed delay between exposures
-            seq = DelaySequence(args.delay, logr)
+            seq = DelaySequence(args.delay, logr, name=args.name)
             logr.log("New lapse started with {}s delay (runs indefinitely)".format(args.delay))
         else:
             # compute delay from duration/output/fps
@@ -83,7 +84,7 @@ try:
 
             # only cap frames if the user explicitly set --duration or --output
             max_images = total_frames if (args.duration or args.output) else None
-            seq = DelaySequence(delay, logr, max_images=max_images)
+            seq = DelaySequence(delay, logr, max_images=max_images, name=args.name)
 
             if max_images:
                 logr.log("New lapse started with {:.1f}s delay ({} frames)".format(delay, max_images))
