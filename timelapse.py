@@ -9,13 +9,13 @@ from logger import Logger
 from timelapse_errors import TimeoutError, TimelapseError
 from fcntl import ioctl
 import logging
-import RPi.GPIO as GPIO
+from raspberry_pi import PowerRelay
 
 class Timelapse:
-    
+
     sequence = None
     logger = None
-    
+
     state = {
         "preferences": {
             "max_ms_between_images": 600000,
@@ -158,6 +158,7 @@ class GPhoto2Timelapse(Timelapse):
 
     # runtime vars
     camera_port_info_path = None
+    power_relay = None
 
     # diagnostic variables
     attempted_killall_ptp = False
@@ -206,16 +207,15 @@ class GPhoto2Timelapse(Timelapse):
 
     def power_cycle_camera(self):
 
-        power_signal_pin = self.state["preferences"]["power_signal_pin"]
         camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
 
         self.logger.log("> Cutting power to camera")
-        GPIO.output(power_signal_pin, GPIO.HIGH)
+        self.power_relay.off()
 
         time.sleep(camera_cycle_time)
 
         self.logger.log("> Restoring power to camera")
-        GPIO.output(power_signal_pin, GPIO.LOW)
+        self.power_relay.on()
 
         time.sleep(camera_cycle_time)
 
@@ -264,12 +264,10 @@ class GPhoto2Timelapse(Timelapse):
     def prelapse(self):
 
         # turn on the power port for the camera before the lapse
-        power_signal_pin = self.state["preferences"]["power_signal_pin"]
         camera_cycle_time = self.state["preferences"]["camera_cycle_time"]
 
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(power_signal_pin, GPIO.OUT)
-        GPIO.output(power_signal_pin, GPIO.LOW)
+        self.power_relay = PowerRelay(self.state)
+        self.power_relay.on()
 
         time.sleep(camera_cycle_time)
 

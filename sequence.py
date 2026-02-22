@@ -2,6 +2,34 @@ import time
 from logger import Logger
 from datetime import datetime
 
+
+class DelaySequence:
+
+    def __init__(self, delay_seconds, logger=Logger(), max_images=None, name="image"):
+        self.delay_seconds = delay_seconds
+        self.delay_ms = delay_seconds * 1000
+        self.logger = logger
+        self.image_count = 0
+        self.max_images = max_images
+        self.name = name
+
+    def get_exposures(self):
+        return []
+
+    def get_next_image(self, delay=0):
+        self.image_count += 1
+        current_ts = int(round(time.time() * 1000))
+        return {
+            "name": self.name,
+            "ts": current_ts + self.delay_ms
+        }
+
+    def has_more_images(self):
+        if self.max_images is None:
+            return True
+        return self.image_count < self.max_images
+
+
 class Sequence:
 
     exposures = []

@@ -64,22 +64,24 @@ cd ~/
 git clone git@github.com:brettcrowell/python-gphoto2-timelapse.git
 ```
 
-4) Create a new Python Virtual Environment to isolate this app from your overall environment...
+4) Install uv (fast Python package manager) and set up the virtual environment...
+
+```
+# Install uv (macOS/Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or on macOS with Homebrew
+brew install uv
+```
+
+5) Create a virtual environment and install dependencies...
 
 ```
 cd ~/python-gphoto2-timelapse
-sudo pip3 install virtualenv
-virtualenv timelapse
-source timelapse/bin/activate
+uv venv
+source .venv/bin/activate
+uv pip install .
 ```
-
-5) Install Python dependencies
-
-```
-sudo pip3 install -r requirements.txt
-```
-
-_Depending on your particular Python installation, `pip3` may be called, for example, `pip-3.2`_
 
 6) Mark the Server's Shell script as executable...
 
